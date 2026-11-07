@@ -1,0 +1,12 @@
+# Python isolated environments
+.venv*/
+
+# Byte-compiled / optimized / DLL files / distribution / packaging
+__pycache__/
+*.py[codz]
+*$py.class
+.pytest_cache/
+*.egg-info/
+
+# Local standalone tools
+.tools/
