@@ -1,0 +1,14 @@
+[project]
+name = "image-pipeline"
+version = "0.1.0"
+description = "Batch image transformation pipeline"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest"]
+
+[build-system]
+# Upper bound to be set once the uv version is chosen.
+requires = ["uv_build>=0.9"]
+build-backend = "uv_build"
