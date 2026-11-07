@@ -242,13 +242,21 @@ Changes saturation by a random percent in `[min_percent, max_percent]`, drawn se
 ## Command line
 
 ```
-uv run python -m imgpipe --preset preset.toml [--input input] [--output output] [--seed N] [--verbose] [--dry-run]
+uv run python -m imgpipe --preset preset.toml [--input input] [--output output] [--seed N] [--verbose | --quiet] [--dry-run]
+```
+
+By default one progress line is printed to stdout for each file as soon as it is saved, with paths as given on the command line, and a summary at the end (warnings stay on stderr):
+
+```
+input/sub/b.jpg -> output/sub/b.jpg
+...
+2 images processed, 0 skipped.
 ```
 
 - `--input` (default `input`): searched recursively for images.
 - `--output` (default `output`): receives the results with the same relative paths (subfolders are mirrored). Names and formats come from the `[output]` section: by default they are the originals'; with a `format` the extension changes and name clashes get a number. Renaming files by a pattern (date and time with random digits) is not implemented yet. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
 - `--seed`: makes random values repeatable.
-- `-v`, `--verbose`: prints one line to stdout for each file as soon as it is saved, with paths as given on the command line (warnings stay on stderr, the summary comes last):
+- `-v`, `--verbose`: adds what was applied to each progress line:
 
   ```
   input/sub/b.jpg -> output/sub/b.jpg | size 650x470 -> 300x217 | saturation +4.2%
@@ -259,6 +267,7 @@ uv run python -m imgpipe --preset preset.toml [--input input] [--output output] 
   - `trim`: shown only when `trim_borders` cut something: the pixels removed from the left, top, right and bottom, e.g. `trim L12 T8 R28 B32`.
   - `brightness`: shown only when `auto_brightness` changed something, e.g. `brightness levels 18-231 -> 0-255` or `brightness x1.16 (mean 110, target 128)`.
   - `saturation`: the percent applied by `rnd_saturation`, or `n/a (grayscale)` when the image has no color. If several `rnd_saturation` steps are used, the values are listed separated by commas.
+- `-q`, `--quiet`: prints no progress lines and no summary, so a successful run is silent. Warnings about skipped files and errors are still shown, and so is the notice about files that got a number added to their names (you did not choose those names). Cannot be combined with `--verbose` or `--dry-run`.
 - `-n`, `--dry-run`: shows what would be done without writing anything (the output folder is not even created). It always prints the per-file lines described under `--verbose`.
   - Every image is read and the steps are applied, so the sizes and random values are exactly those a real run with the same `--seed` would give, and unreadable files are reported as in a real run.
   - Work that nothing later needs is skipped: for example the saturation change is not applied to the pixels when no later step reads them, and a `resize` that is the last step only reports the size it would produce instead of resampling the image.

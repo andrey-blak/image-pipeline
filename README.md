@@ -31,7 +31,7 @@ Original images are never modified.
 ## Command line
 
 ```bash
-uv run python -m imgpipe [--preset FILE] [--input DIR] [--output DIR] [--seed N] [--verbose] [--dry-run]
+uv run python -m imgpipe [--preset FILE] [--input DIR] [--output DIR] [--seed N] [--verbose | --quiet] [--dry-run]
 ```
 
 | Option | Default | Meaning |
@@ -40,7 +40,8 @@ uv run python -m imgpipe [--preset FILE] [--input DIR] [--output DIR] [--seed N]
 | `--input DIR` | `input` | Folder searched recursively for images. |
 | `--output DIR` | `output` | Folder for the results; subfolders are mirrored. Must differ from the input folder. |
 | `--seed N` | random | Makes random values repeatable. |
-| `-v`, `--verbose` | off | Print one line per processed file: original path, new path, and the applied changes (size, saturation). |
+| `-v`, `--verbose` | off | Add the applied changes (size, saturation, ...) to the progress line of each file. |
+| `-q`, `--quiet` | off | Print no progress lines and no summary. Warnings and errors are still shown. Not combinable with `-v` or `-n`. |
 | `-n`, `--dry-run` | off | Show what would be done, in the same per-file format as `--verbose`, without writing any files. |
 | `-h`, `--help` | | Show help. |
 
@@ -62,9 +63,14 @@ Preview the planned changes without modifying or creating output files:
 ./imgpipe --preset preset.toml --dry-run
 ```
 
-Process images with verbose output:
+By default one line per file (original path -> new path) shows the progress. To see the applied changes too:
 ```bash
 ./imgpipe --preset preset.toml --verbose
+```
+
+Run without any progress output:
+```bash
+./imgpipe --preset preset.toml --quiet
 ```
 
 Use a fixed seed to make random transformations repeatable:

@@ -109,10 +109,52 @@ def test_verbose_lists_each_file(make_image, tmp_path, capsys):
     assert len(lines) == 3
 
 
-def test_no_file_lines_without_verbose(make_image, tmp_path, capsys):
+def test_one_progress_line_per_file_without_details_by_default(make_image, tmp_path, capsys):
     preset = setup(make_image, tmp_path)
     main(["--preset", str(preset), "--input", str(tmp_path / "in"), "--output", str(tmp_path / "out")])
-    assert capsys.readouterr().out.splitlines() == ["2 images processed, 0 skipped."]
+    lines = capsys.readouterr().out.splitlines()
+    assert len(lines) == 3 and lines[-1] == "2 images processed, 0 skipped."
+    assert lines[0] == f"{tmp_path / 'in/a.png'} -> {tmp_path / 'out/a.png'}"
+    assert lines[1] == f"{tmp_path / 'in/sub/b.jpg'} -> {tmp_path / 'out/sub/b.jpg'}"
+
+
+def test_verbose_adds_the_details_to_the_progress_lines(make_image, tmp_path, capsys):
+    setup(make_image, tmp_path)
+    run_cli(tmp_path)
+    plain = capsys.readouterr().out.splitlines()
+    run_cli(tmp_path, "-v")
+    verbose = capsys.readouterr().out.splitlines()
+    assert [line.split(" | ")[0] for line in verbose[:2]] == plain[:2]
+    assert all(" | size " in line for line in verbose[:2]) and not any(" | " in line for line in plain)
+
+
+@pytest.mark.parametrize("flag", ["-q", "--quiet"])
+def test_quiet_prints_no_progress_and_no_summary(make_image, tmp_path, capsys, flag):
+    setup(make_image, tmp_path)
+    assert run_cli(tmp_path, flag) == 0
+    captured = capsys.readouterr()
+    assert captured.out == "" and captured.err == ""
+    assert (tmp_path / "out/a.png").exists()
+
+
+def test_quiet_still_shows_warnings_and_errors(make_image, tmp_path, capsys):
+    setup(make_image, tmp_path)
+    (tmp_path / "in/broken.png").write_bytes(b"not an image")
+    assert run_cli(tmp_path, "-q") == 0
+    captured = capsys.readouterr()
+    assert captured.out == "" and "warning: skipped" in captured.err and "broken.png" in captured.err
+
+    (tmp_path / "preset.toml").write_text("")
+    assert run_cli(tmp_path, "-q") == 2
+    assert "error:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("other", ["-v", "-n"])
+def test_quiet_cannot_be_combined_with_verbose_or_dry_run(tmp_path, capsys, other):
+    with pytest.raises(SystemExit) as e:
+        main(["-q", other])
+    assert e.value.code == 2
+    assert "not allowed with" in capsys.readouterr().err
 
 
 def test_verbose_output_repeatable_with_seed(make_image, tmp_path, capsys):
@@ -369,7 +411,9 @@ def test_name_clash_is_reported_without_verbose(make_image, tmp_path, capsys):
     assert run_cli(tmp_path) == 0
 
     lines = capsys.readouterr().out.splitlines()
-    assert lines == [
+    assert lines[:2] == [f"{tmp_path / 'in/a.jpg'} -> {tmp_path / 'out/a.webp'}",
+                         f"{tmp_path / 'in/a.png'} -> {tmp_path / 'out/a-1.webp'}"]
+    assert lines[2:] == [
         "2 images processed, 0 skipped.",
         "1 file got a number added to its name because the name was already taken:",
         f"  {tmp_path / 'in/a.png'} -> {tmp_path / 'out/a-1.webp'}",
@@ -382,8 +426,19 @@ def test_several_clashes_use_the_plural(make_image, tmp_path, capsys):
     write_output_preset(tmp_path, '\n[output]\nformat = "webp"\n')
     run_cli(tmp_path)
     lines = capsys.readouterr().out.splitlines()
-    assert lines[1] == "2 files got a number added to their names because the name was already taken:"
-    assert len(lines) == 4
+    assert lines[4] == "2 files got a number added to their names because the name was already taken:"
+    assert len(lines) == 7
+
+
+def test_clashes_are_reported_even_when_quiet(make_image, tmp_path, capsys):
+    make_image("in/a.png")
+    make_image("in/a.jpg")
+    write_output_preset(tmp_path, '\n[output]\nformat = "webp"\n')
+    run_cli(tmp_path, "-q")
+    assert capsys.readouterr().out.splitlines() == [
+        "1 file got a number added to its name because the name was already taken:",
+        f"  {tmp_path / 'in/a.png'} -> {tmp_path / 'out/a-1.webp'}",
+    ]
 
 
 def test_dry_run_reports_clashes_too(make_image, tmp_path, capsys):
@@ -416,7 +471,8 @@ def test_no_clash_block_when_nothing_was_renamed(make_image, tmp_path, capsys):
     make_image("in/b.jpg")
     write_output_preset(tmp_path, '\n[output]\nformat = "webp"\n')
     run_cli(tmp_path)
-    assert capsys.readouterr().out.splitlines() == ["2 images processed, 0 skipped."]
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[-1] == "2 images processed, 0 skipped." and len(lines) == 3
 
 
 def test_keep_mode_has_no_clashes_and_keeps_names(make_image, tmp_path, capsys):
@@ -424,7 +480,8 @@ def test_keep_mode_has_no_clashes_and_keeps_names(make_image, tmp_path, capsys):
     make_image("in/a.jpg")
     write_output_preset(tmp_path)
     run_cli(tmp_path)
-    assert capsys.readouterr().out.splitlines() == ["2 images processed, 0 skipped."]
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[-1] == "2 images processed, 0 skipped." and len(lines) == 3
     assert sorted(p.name for p in (tmp_path / "out").iterdir()) == ["a.jpg", "a.png"]
 
 
