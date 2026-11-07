@@ -1,13 +1,12 @@
 # Text values are written in "quotes" (format = "jpg"), numbers and true/false are not (quality = 80, keep_metadata = false).
 # Lines starting with # are comments.
 
-# Global options.
 [options]
-# Folders and the seed for random values. Optional; the command line options --input, --output and --seed take precedence. 
+# Folders and the seed for random values. Optional; the command line options --input, --output and --seed take precedence.
 # Relative folders are relative to where imgpipe is started.
-# input_folder = "input"     # default
-# output_folder = "output"   # default
-# seed = 1                   # default: a different random seed on every run
+input_folder = "input"     # default
+output_folder = "output"   # default
+seed = 1                   # default: a different random seed on every run
 
 # What to do with the EXIF orientation tag of photos:
 # "apply" (default) - rotate the pixels upright and reset the tag;
@@ -15,7 +14,6 @@
 # "remove" - leave the pixels as stored and remove the tag.
 exif_orientation = "apply"
 
-# Output options. Control how the results are written.
 [output]
 # format - "keep" the original format (default); or "png", "jpg", "webp", "avif", "gif", "tiff", "bmp"
 format = "keep"
@@ -23,29 +21,29 @@ format = "keep"
 # quality: 1-100, for "jpg", "webp" and "avif" (default 80)
 quality = 80
 
-# opaque color for transparency where the format has none ("jpg", "gif", "bmp")
+# opaque color for transparency where the format has none (jpg, gif, bmp)
 background = "white"
 
 # keep_metadata: false (default) - EXIF/XMP/comments are dropped (the ICC color profile always stays);
 # true - keep all metadata
 keep_metadata = false
 
-# New file names built from a pattern. May be placed anywhere in the file.
-# Without it the files keep their names. The extension is added automatically.
+# Build new file names from the pattern.
+# The extension is added automatically.
 [rename]
 pattern = "N YYYY-MM-dd HHmmssSSS-CCC-RRaaAALLBB"
 #     N - name, E - original extension, Y - year, M - month, d - day,
 #     H - hour (0-23), h - hour (1-12), m - minute, s - second, S - fraction of a second (S, SS, SSS), C - counter,
 #     R - random digits, A - random uppercase letter, a - random lowercase letter, L - random letter, B - random digit or letter.
-#     U UUID.
+#     U - UUID.
 #     Repeat a letter to set the width;
 #     Other characters are copied as they are.
 #     Put literal text containing token letters in single quotes: "'IMG'"
 
-# The first value of the counter `C`
+# The first value of the counter.
 counter_start = 1
 
-# Cut off solid-color or transparent margins.
+# Cut off transparent or solid-color margins.
 [[steps]]
 name = "trim_borders"
 
@@ -53,11 +51,8 @@ name = "trim_borders"
 # Or "transparent", a color name, or "#rrggbb".
 background = "auto"
 
-# tolerance. 0-255, default - 0: how far colors may differ and still be considered "the same":
-# corners from each other (auto)
-# or border pixels from the background.
-# 0 - exact.
-# Photos and scans usually need approximately 5-10.
+# tolerance. 0-255, How much two colors may differ and still count as the same.
+# default - 0 - - exact.
 tolerance = 5
 
 # Rotate by a random angle.
@@ -68,33 +63,18 @@ name = "rnd_rotate"
 min_angle = 0
 max_angle = 5
 
-# crop, default: cut away the empty corners. Or "fill": keep everything on a
-# larger canvas and fill the corners with the `fill` color
+# crop, default: cut away the empty corners.
+# Or "fill": keep everything on a larger canvas and fill the corners with the `fill` color
 corners = "crop"
-# For corners = "fill" only; default "transparent".
 # fill = "white"
 
-# Rotate by a fixed angle (positive - clockwise):
-# [[steps]]
-# name = "rotate"
-# angle = 90
-
 # Scale keeping proportions.
-# [[steps]]
-# name = "resize"
-# default mode "longest_side": the longer side becomes `size` pixels
-# mode = "longest_side"
-# size = 300
-
-# upscale - true (default): images smaller than the target are enlarged too;
-# false: they are left as they are
-# upscale = true
-
-# To set only the width (or only the height) and let the other side follow:
 [[steps]]
 name = "resize"
 mode = "scale"
 width = 300
+# upscale - true (default): images smaller than the target are enlarged too;
+# false: they are left as they are
 upscale = true
 
 # Adjust brightness automatically.
