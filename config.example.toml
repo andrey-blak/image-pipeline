@@ -1,83 +1,90 @@
-# Example pipeline config. Steps run top to bottom, in the order written.
-# Run: uv run python -m imgpipe --config config.example.toml
-
-# Global options. This table may be placed anywhere in the file, e.g. after the steps.
+# Global options.
 [options]
 # Make photos upright according to their EXIF orientation tag (default: true).
-# fix_orientation = true
+fix_orientation = true
 
-# How the results are written. Also a table that may be placed anywhere in the file.
-# Applied after the last step; it is not a step.
+# Output options. Control how the results are written.
 [output]
-# format = "keep"          # keep the original format; or png, jpg, webp, avif, gif, tiff, bmp
-# quality = 90             # 1-100, for jpg, webp and avif (default 90)
-# background = "white"     # opaque color for transparency where the format has none (jpg, gif, bmp)
-# keep_metadata = false    # false: EXIF/XMP/comments are dropped; the ICC color profile always stays
+# format - keep the original format by default; or png, jpg, webp, avif, gif, tiff, bmp
+format = "keep"
+
+# quality: 1-100, for jpg, webp and avif (default 90)
+quality = 90
+
+# opaque color for transparency where the format has none (jpg, gif, bmp)
+background = "white"
+
+# keep metadata: false - EXIF/XMP/comments are dropped; the ICC color profile always staysl true - keep all metadata
+keep_metadata = false
 
 # New file names built from a pattern. Also a table that may be placed anywhere in the file.
 # Without it the files keep their names. The extension is added automatically.
-# [rename]
-# pattern = "N-YYYY-MM-dd-HHmmssSSS-CCC-RRaaAALLBB"
-#     N name, E original extension, Y year, M month, d day, H hour (0-23), h hour (1-12),
-#     m minute, s second, S fraction of a second (S, SS, SSS), C counter,
-#     R random digits, A random A-Z, a random a-z, L random letters, B random digits and letters,
-#     U UUID. Repeat a letter to set the width; other characters are copied as they are.
-#     Literal text containing token letters goes in single quotes: "'IMG_'CCC"
-# counter_start = 1
+[rename]
+pattern = "N YYYY-MM-dd HHmmssSSS-CCC-RRaaAALLBB"
+#     N - name, E - original extension, Y - year, M - month, d - day,
+#     H - hour (0-23), h - hour (1-12), m - minute, s - second, S - fraction of a second (S, SS, SSS), C - counter,
+#     R - random digits, A - random uppercase letter, a - random lowercase letter, L - random letter, B - random digit or letter.
+#     U UUID.
+#     Repeat a letter to set the width;
+#     Other characters are copied as they are.
+#     Put literal text containing token letters in single quotes: "'IMG'"
 
-# Cut off solid-color or transparent margins (put it before `resize`).
+# The first value of the counter `C`
+counter_start = 1
+
+# Cut off solid-color or transparent margins.
 [[steps]]
 name = "trim_borders"
-background = "auto"   # default: the four corners must be the same color (within the tolerance), otherwise nothing is cut.
-                      # Or "transparent", a color name, or "#rrggbb".
-tolerance = 5         # 0-255, default - 0: how far colors may differ and still be "the same":
-                      # corners from each other (auto) or border pixels from the background.
-                      # 0 = exact. Photos and scans usually need approximately 5-10.
 
-# Rotate by a random angle, drawn per image (after `trim_borders`, before `resize`).
+# background. default - "auto": the four corners must be the same color (within the tolerance), otherwise nothing is cut.
+# Or "transparent", a color name, or "#rrggbb".
+background = "auto"
+
+# tolerance. 0-255, default - 0: how far colors may differ and still be considered "the same":
+# corners from each other (auto)
+# or border pixels from the background.
+# 0 - exact.
+# Photos and scans usually need approximately 5-10.
+tolerance = 5
+
+# Rotate by a random angle.
 [[steps]]
 name = "rnd_rotate"
-min_angle = 0         # the angle is min_angle..max_angle degrees (absolute values),
-max_angle = 5         # clockwise or counterclockwise at random. Default 0..5
-corners = "crop"      # default: cut away the empty corners. Or "fill": keep everything on a
-                      # larger canvas and fill the corners with `fill`
-# fill = "white"        # corners = "fill" only; default "transparent"
+# the rotation angle is min_angle..max_angle degrees (absolute values),
+# clockwise or counterclockwise at random. Default 0..5
+min_angle = 0
+max_angle = 5
 
-# Rotate by a fixed angle (positive = clockwise; 90, 180, 270 are exact turns):
-#   [[steps]]
-#   name = "rotate"
-#   angle = 90
+# crop, default: cut away the empty corners. Or "fill": keep everything on a
+# larger canvas and fill the corners with the `fill` color
+corners = "crop"
+# For corners = "fill" only; default "transparent".
+# fill = "white"
 
-# Scale keeping proportions: the longer side becomes `size` pixels.
+# Rotate by a fixed angle (positive - clockwise):
+[[steps]]
+name = "rotate"
+angle = 90
+
+# Scale keeping proportions.
 [[steps]]
 name = "resize"
+# default mode "longest_side": the longer side becomes `size` pixels
+mode = "longest_side"
 size = 300
-# mode = "longest_side"   # default
-# upscale = false         # true: also enlarge images smaller than the target
 
-# Other modes (replace the lines above):
-#   Fit inside an exact size, fill the rest (`size = 300` alone means 300x300):
-#     mode = "padding"
-#     width = 300
-#     height = 200
-#     fill = "white"        # default "transparent"; "#rrggbb" also works
-#   Cover an exact size, cut off the overflow evenly (center-crop):
-#     mode = "crop"
-#     width = 300
-#     height = 200
+# upscale - if true: also upscale images smaller than the target
+upscale = false
 
-# Adjust brightness automatically (best after `resize`).
+# Adjust brightness automatically.
 [[steps]]
 name = "auto_brightness"
-# method = "autocontrast"   # default: stretch the darkest..lightest levels to 0..255, keeping colors
-# cutoff = 0.5              # autocontrast only: percent of darkest/lightest pixels to ignore
-#
-# Or scale toward an average brightness instead (replace the lines above):
-#   method = "target_mean"
-#   target = 128            # wanted average brightness, 0-255
-#   max_change = 0.3        # the factor is limited to 1 +/- this
+# "autocontrast" - default mode: stretch the darkest..lightest levels to 0..255, keeping colors
+method = "autocontrast"
+# For autocontrast only: percent of darkest/lightest pixels to ignore
+# cutoff = 0.5
 
-# Change saturation by a random percent in this range, drawn per image.
+# Change saturation by a random percent in the range.
 [[steps]]
 name = "rnd_saturation"
 min_percent = 3
