@@ -101,7 +101,7 @@ def test_verbose_lists_each_file(make_image, tmp_path, capsys):
     pattern = r"{src} -> {dst} \| size {old} -> {new} \| saturation [+-]\d+\.\d%"
     for line, (rel, old, new) in zip(lines, [("a.png", "40x20", "10x5"), ("sub/b.jpg", "20x40", "5x10")]):
         assert re.fullmatch(
-            pattern.format(src=re.escape(f"{tmp_path}/in/{rel}"), dst=re.escape(f"{tmp_path}/out/{rel}"),
+            pattern.format(src=re.escape(str(tmp_path / "in" / rel)), dst=re.escape(str(tmp_path / "out" / rel)),
                            old=old, new=new),
             line,
         )
@@ -142,7 +142,7 @@ def test_verbose_without_config_does_nothing(capsys):
 def test_format_report_uses_paths_as_given():
     report = FileReport(Path("x/a.png"), Path("x/b.png"), {"size": "4x4 (unchanged)", "saturation": "+1.0%"})
     assert format_report(report, Path("input"), Path("output")) == (
-        "input/x/a.png -> output/x/b.png | size 4x4 (unchanged) | saturation +1.0%"
+        f"{Path('input/x/a.png')} -> {Path('output/x/b.png')} | size 4x4 (unchanged) | saturation +1.0%"
     )
 
 
@@ -355,8 +355,8 @@ def test_conversion_end_to_end(make_image, tmp_path, capsys):
     assert run_cli(tmp_path, "-v") == 0
 
     lines = capsys.readouterr().out.splitlines()
-    assert f"{tmp_path}/out/a.webp | size 40x20 -> 10x5 | saturation " in lines[0]
-    assert f"{tmp_path}/out/sub/b.webp" in lines[1]
+    assert f"{tmp_path / 'out/a.webp'} | size 40x20 -> 10x5 | saturation " in lines[0]
+    assert f"{tmp_path / 'out/sub/b.webp'}" in lines[1]
     assert lines[-1] == "2 images processed, 0 skipped."
     with Image.open(tmp_path / "out/a.webp") as image:
         assert image.format == "WEBP" and image.size == (10, 5)
@@ -372,7 +372,7 @@ def test_name_clash_is_reported_without_verbose(make_image, tmp_path, capsys):
     assert lines == [
         "2 images processed, 0 skipped.",
         "1 file got a number added to its name because the name was already taken:",
-        f"  {tmp_path}/in/a.png -> {tmp_path}/out/a-1.webp",
+        f"  {tmp_path / 'in/a.png'} -> {tmp_path / 'out/a-1.webp'}",
     ]
 
 
@@ -396,7 +396,7 @@ def test_dry_run_reports_clashes_too(make_image, tmp_path, capsys):
     assert lines[-4:] == [
         "2 images would be processed, 0 skipped.",
         "1 file would get a number added to its name because the name was already taken:",
-        f"  {tmp_path}/in/a.png -> {tmp_path}/out/a-1.webp",
+        f"  {tmp_path / 'in/a.png'} -> {tmp_path / 'out/a-1.webp'}",
         "Nothing was written.",
     ]
     assert not (tmp_path / "out").exists()
@@ -408,7 +408,7 @@ def test_verbose_line_shows_the_final_name(make_image, tmp_path, capsys):
     write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
     run_cli(tmp_path, "-v")
     out = capsys.readouterr().out
-    assert f"{tmp_path}/in/a.png -> {tmp_path}/out/a-1.webp" in out.splitlines()[1]
+    assert f"{tmp_path / 'in/a.png'} -> {tmp_path / 'out/a-1.webp'}" in out.splitlines()[1]
 
 
 def test_no_clash_block_when_nothing_was_renamed(make_image, tmp_path, capsys):
