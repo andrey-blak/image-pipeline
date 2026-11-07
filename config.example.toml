@@ -1,0 +1,15 @@
+# Example pipeline config. Steps run top to bottom, in the order written.
+# Run: uv run python -m imgpipe --config config.example.toml
+
+# Scale keeping proportions: the longer side becomes `size` pixels.
+[[steps]]
+name = "resize"
+size = 300
+# mode = "longest_side"   # the only mode so far
+# upscale = false         # true: also enlarge images smaller than `size`
+
+# Change saturation by a random percent in this range, drawn per image.
+[[steps]]
+name = "rnd_saturation"
+min_percent = 3
+max_percent = 5

@@ -1,0 +1,106 @@
+"""Pipeline steps and their registry.
+
+A step is a dataclass whose fields are its config options. Register it with
+``@register("name")``; the name is what the config file refers to.
+"""
+
+import dataclasses
+import random
+import typing
+from dataclasses import dataclass
+
+from PIL import Image
+
+from imgpipe.errors import ConfigError
+
+REGISTRY: dict[str, type["Step"]] = {}
+
+
+@dataclass
+class Context:
+    """Per-run state shared by all steps. Random values are drawn from ``rng``."""
+
+    rng: random.Random
+
+
+class Step:
+    """Base class for pipeline steps. Subclasses must also be dataclasses."""
+
+    name: typing.ClassVar[str]
+
+    @classmethod
+    def from_options(cls, options: dict[str, typing.Any]) -> "Step":
+        fields = {f.name: f for f in dataclasses.fields(cls)}  # type: ignore[arg-type]
+        hints = typing.get_type_hints(cls)
+        unknown = sorted(set(options) - set(fields))
+        if unknown:
+            raise ConfigError(
+                f"step '{cls.name}': unknown option(s) {', '.join(unknown)}; "
+                f"known options: {', '.join(fields) or 'none'}"
+            )
+        for key, field in fields.items():
+            required = (
+                field.default is dataclasses.MISSING
+                and field.default_factory is dataclasses.MISSING
+            )
+            if key not in options:
+                if required:
+                    raise ConfigError(f"step '{cls.name}': missing required option '{key}'")
+                continue
+            _check_type(cls.name, key, options[key], hints[key])
+        try:
+            return cls(**options)
+        except ConfigError:
+            raise
+        except ValueError as e:
+            raise ConfigError(f"step '{cls.name}': {e}") from e
+
+    def apply(self, image: Image.Image, ctx: Context) -> Image.Image:
+        raise NotImplementedError
+
+
+def _check_type(step: str, key: str, value: typing.Any, expected: type) -> None:
+    if expected is float:
+        ok = isinstance(value, (int, float)) and not isinstance(value, bool)
+    elif expected is int:
+        ok = isinstance(value, int) and not isinstance(value, bool)
+    else:
+        ok = isinstance(value, expected)
+    if not ok:
+        raise ConfigError(
+            f"step '{step}': option '{key}' must be {expected.__name__}, "
+            f"got {type(value).__name__} ({value!r})"
+        )
+
+
+def register(name: str):
+    def decorator(cls: type[Step]) -> type[Step]:
+        if name in REGISTRY:
+            raise ValueError(f"step '{name}' is already registered")
+        cls.name = name
+        REGISTRY[name] = cls
+        return cls
+
+    return decorator
+
+
+def create_step(name: str, options: dict[str, typing.Any]) -> Step:
+    try:
+        cls = REGISTRY[name]
+    except KeyError:
+        raise ConfigError(
+            f"unknown step '{name}'; known steps: {', '.join(sorted(REGISTRY))}"
+        ) from None
+    return cls.from_options(options)
+
+
+def normalize_mode(image: Image.Image) -> Image.Image:
+    """Convert exotic modes (palette, CMYK, 16-bit, ...) to ones steps can handle."""
+    if image.mode in ("RGB", "RGBA", "L", "LA"):
+        return image
+    has_alpha = image.mode in ("PA", "RGBa", "La") or "transparency" in image.info
+    return image.convert("RGBA" if has_alpha else "RGB")
+
+
+# Import for the side effect of registering the built-in steps.
+from imgpipe.steps import resize, rnd_saturation  # noqa: E402,F401
