@@ -11,8 +11,8 @@ from imgpipe.pipeline import FileReport, Pipeline
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="imgpipe", description="Batch image transformation pipeline.")
     parser.add_argument("--preset", type=Path, help="TOML pipeline preset; without it nothing is done")
-    parser.add_argument("--input", type=Path, default=Path("input"), help="input folder (default: input)")
-    parser.add_argument("--output", type=Path, default=Path("output"), help="output folder (default: output)")
+    parser.add_argument("-i", "--input", type=Path, default=Path("input"), help="input folder (default: input)")
+    parser.add_argument("-o", "--output", type=Path, default=Path("output"), help="output folder (default: output)")
     parser.add_argument("--seed", type=int, help="seed for repeatable random values")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(

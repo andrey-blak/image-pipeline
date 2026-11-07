@@ -539,3 +539,12 @@ def test_background_alone_is_rejected_without_steps(make_image, tmp_path, capsys
     code, captured = run_without_steps(make_image, tmp_path, '[output]\nbackground = "red"\n', capsys)
     assert code == 2
     assert "define at least one [[steps]] entry" in captured.err
+
+
+def test_short_options_i_and_o_are_the_same_as_input_and_output(make_image, tmp_path, capsys):
+    setup(make_image, tmp_path)
+    assert main(["--preset", str(tmp_path / "preset.toml"), "-i", str(tmp_path / "in"),
+                 "-o", str(tmp_path / "short"), "--seed", "1", "-q"]) == 0
+    assert run_cli(tmp_path, "-q") == 0
+    assert (tmp_path / "short/a.png").read_bytes() == (tmp_path / "out/a.png").read_bytes()
+    assert (tmp_path / "short/sub/b.jpg").exists()

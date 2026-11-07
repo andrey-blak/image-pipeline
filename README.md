@@ -11,7 +11,7 @@ Python package: `imgpipe`. The pipeline preset is a TOML file. Dependency manage
 ```bash
 uv sync
 uv run pytest
-uv run python -m imgpipe --preset preset.example.toml --input input --output output --seed 1
+uv run python -m imgpipe --preset preset.example.toml -i input -o output --seed 1
 ```
 
 ## Standalone application
@@ -21,7 +21,7 @@ A standalone executable is available for Linux and Windows in the project's rele
 Run the application from a terminal:
 
 ```bash
-./imgpipe --preset preset.toml --input input --output output --seed 1
+./imgpipe --preset preset.toml -i input -o output --seed 1
 ```
 
 The executable uses the same command line options as the Python package.
@@ -31,14 +31,14 @@ Original images are never modified.
 ## Command line
 
 ```bash
-uv run python -m imgpipe [--preset FILE] [--input DIR] [--output DIR] [--seed N] [--verbose | --quiet] [--dry-run]
+uv run python -m imgpipe [--preset FILE] [-i DIR] [-o DIR] [--seed N] [--verbose | --quiet] [--dry-run]
 ```
 
 | Option | Default | Meaning |
 |---|---|---|
 | `--preset FILE` | none | TOML pipeline preset. Without it the tool does nothing. |
-| `--input DIR` | `input` | Folder searched recursively for images. |
-| `--output DIR` | `output` | Folder for the results; subfolders are mirrored. Must differ from the input folder. |
+| `-i DIR`, `--input DIR` | `input` | Folder searched recursively for images. |
+| `-o DIR`, `--output DIR` | `output` | Folder for the results; subfolders are mirrored. Must differ from the input folder. |
 | `--seed N` | random | Makes random values repeatable. |
 | `-v`, `--verbose` | off | Add the applied changes (size, saturation, ...) to the progress line of each file. |
 | `-q`, `--quiet` | off | Print no progress lines and no summary. Warnings and errors are still shown. Not combinable with `-v` or `-n`. |
@@ -55,7 +55,7 @@ Process images using a preset file:
 
 Specify custom input and output folders:
 ```bash
-./imgpipe --preset preset.toml --input photos --output processed
+./imgpipe --preset preset.toml -i photos -o processed
 ```
 
 Preview the planned changes without modifying or creating output files:

@@ -242,7 +242,7 @@ Changes saturation by a random percent in `[min_percent, max_percent]`, drawn se
 ## Command line
 
 ```
-uv run python -m imgpipe --preset preset.toml [--input input] [--output output] [--seed N] [--verbose | --quiet] [--dry-run]
+uv run python -m imgpipe --preset preset.toml [-i input] [-o output] [--seed N] [--verbose | --quiet] [--dry-run]
 ```
 
 By default one progress line is printed to stdout for each file as soon as it is saved, with paths as given on the command line, and a summary at the end (warnings stay on stderr):
@@ -253,8 +253,8 @@ input/sub/b.jpg -> output/sub/b.jpg
 2 images processed, 0 skipped.
 ```
 
-- `--input` (default `input`): searched recursively for images.
-- `--output` (default `output`): receives the results with the same relative paths (subfolders are mirrored). Names and formats come from the `[output]` section: by default they are the originals'; with a `format` the extension changes and name clashes get a number. Renaming files by a pattern (date and time with random digits) is not implemented yet. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
+- `-i`, `--input` (default `input`): searched recursively for images.
+- `-o`, `--output` (default `output`): receives the results with the same relative paths (subfolders are mirrored). Names and formats come from the `[output]` section: by default they are the originals'; with a `format` the extension changes and name clashes get a number. Renaming files by a pattern (date and time with random digits) is not implemented yet. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
 - `--seed`: makes random values repeatable.
 - `-v`, `--verbose`: adds what was applied to each progress line:
 
