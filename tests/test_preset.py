@@ -280,3 +280,27 @@ def test_no_steps_and_nothing_changed_keeps_the_error(tmp_path, text, steps_line
 def test_steps_are_kept_next_to_a_file_changing_section(tmp_path):
     preset = load_preset(write(tmp_path, f'[output]\nformat = "png"\n{STEP}'))
     assert [s.name for s in preset.steps] == ["resize"]
+
+
+# ---------- input, output and seed ----------
+
+def test_folders_and_seed_default_to_none(tmp_path):
+    preset = load_preset(write(tmp_path, STEP))
+    assert (preset.input_folder, preset.output_folder, preset.seed) == (None, None, None)
+
+
+def test_folders_and_seed_can_be_set(tmp_path):
+    preset = load_preset(write(tmp_path, f'{STEP}\n[options]\ninput_folder = "a"\noutput_folder = "b/c"\nseed = 0\n'))
+    assert (preset.input_folder, preset.output_folder, preset.seed) == ("a", "b/c", 0)
+
+
+@pytest.mark.parametrize("line, message", [
+    ("input_folder = 1", "option 'input_folder' must be str"),
+    ("output_folder = true", "option 'output_folder' must be str"),
+    ('seed = "1"', "option 'seed' must be int"),
+    ("seed = 1.5", "option 'seed' must be int"),
+    ("seed = true", "option 'seed' must be int"),
+])
+def test_folders_and_seed_are_type_checked(tmp_path, line, message):
+    with pytest.raises(PresetError, match=message):
+        load_preset(write(tmp_path, f"{STEP}\n[options]\n{line}\n"))

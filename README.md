@@ -11,7 +11,7 @@ Python package: `imgpipe`. The pipeline preset is a TOML file. Dependency manage
 ```bash
 uv sync
 uv run pytest
-uv run python -m imgpipe --preset preset.example.toml -i input -o output --seed 1
+uv run python -m imgpipe --seed 1
 ```
 
 ## Standalone application
@@ -21,7 +21,7 @@ A standalone executable is available for Linux and Windows in the project's rele
 Run the application from a terminal:
 
 ```bash
-./imgpipe --preset preset.toml -i input -o output --seed 1
+./imgpipe
 ```
 
 The executable uses the same command line options as the Python package.
@@ -36,10 +36,10 @@ uv run python -m imgpipe [--preset FILE] [-i DIR] [-o DIR] [--seed N] [--verbose
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--preset FILE` | none | TOML pipeline preset. Without it the tool does nothing. |
-| `-i DIR`, `--input DIR` | `input` | Folder searched recursively for images. |
-| `-o DIR`, `--output DIR` | `output` | Folder for the results; subfolders are mirrored. Must differ from the input folder. |
-| `--seed N` | random | Makes random values repeatable. |
+| `--preset FILE` | `preset.toml` | TOML pipeline preset. The default is read from the current folder; if it is missing the tool stops with an error. |
+| `-i DIR`, `--input DIR` | `input_folder` of the preset, else `input` | Folder searched recursively for images. |
+| `-o DIR`, `--output DIR` | `output_folder` of the preset, else `output` | Folder for the results; subfolders are mirrored. Must differ from the input folder. |
+| `--seed N` | `seed` of the preset, else random | Makes random values repeatable. |
 | `-v`, `--verbose` | off | Add the applied changes (size, saturation, ...) to the progress line of each file. |
 | `-q`, `--quiet` | off | Print no progress lines and no summary. Warnings and errors are still shown. Not combinable with `-v` or `-n`. |
 | `-n`, `--dry-run` | off | Show what would be done, in the same per-file format as `--verbose`, without writing any files. |
@@ -55,27 +55,27 @@ Process images using a preset file:
 
 Specify custom input and output folders:
 ```bash
-./imgpipe --preset preset.toml -i photos -o processed
+./imgpipe -i photos -o processed
 ```
 
 Preview the planned changes without modifying or creating output files:
 ```bash
-./imgpipe --preset preset.toml --dry-run
+./imgpipe --dry-run
 ```
 
 By default one line per file (original path -> new path) shows the progress. To see the applied changes too:
 ```bash
-./imgpipe --preset preset.toml --verbose
+./imgpipe --verbose
 ```
 
 Run without any progress output:
 ```bash
-./imgpipe --preset preset.toml --quiet
+./imgpipe --quiet
 ```
 
 Use a fixed seed to make random transformations repeatable:
 ```bash
-./imgpipe --preset preset.toml --seed 42
+./imgpipe --seed 42
 ```
 
 See `docs/en/preset.md` for all options and `AGENTS.md` for the layout and conventions.

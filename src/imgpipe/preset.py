@@ -9,7 +9,7 @@ from imgpipe.output import OutputSettings
 from imgpipe.steps import Step, create_step
 
 # Sections of global settings: name -> option name -> expected type.
-OPTIONS = {"exif_orientation": str}
+OPTIONS = {"exif_orientation": str, "input_folder": str, "output_folder": str, "seed": int}
 OUTPUT = {"format": str, "quality": int, "background": str, "keep_metadata": bool}
 RENAME = {"pattern": str, "counter_start": int}
 SECTIONS = {"options": OPTIONS, "output": OUTPUT, "rename": RENAME}
@@ -19,6 +19,9 @@ SECTIONS = {"options": OPTIONS, "output": OUTPUT, "rename": RENAME}
 class Preset:
     steps: list[Step]
     exif_orientation: str = "apply"
+    input_folder: str | None = None
+    output_folder: str | None = None
+    seed: int | None = None
     output: OutputSettings = field(default_factory=OutputSettings)
     rename: RenameSettings | None = None
 

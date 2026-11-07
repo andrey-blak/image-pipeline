@@ -1,9 +1,14 @@
-# Example preset. Text values are written in "quotes" (format = "jpg"),
-# numbers and true/false are not (quality = 80, keep_metadata = false).
+# Text values are written in "quotes" (format = "jpg"), numbers and true/false are not (quality = 80, keep_metadata = false).
 # Lines starting with # are comments.
 
 # Global options.
 [options]
+# Folders and the seed for random values. Optional; the command line options --input, --output and --seed take precedence. 
+# Relative folders are relative to where imgpipe is started.
+# input_folder = "input"     # default
+# output_folder = "output"   # default
+# seed = 1                   # default: a different random seed on every run
+
 # What to do with the EXIF orientation tag of photos:
 # "apply" (default) - rotate the pixels upright and reset the tag;
 # "keep" - leave the pixels as stored and keep the tag (even if keep_metadata = false);

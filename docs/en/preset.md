@@ -1,6 +1,6 @@
 # Pipeline preset
 
-A TOML file passed with `--preset`. Without `--preset` the tool does nothing.
+A TOML file that tells imgpipe what to do. By default imgpipe reads `preset.toml` from the current folder; use `--preset FILE` to take another file. Without `--preset` and without a `preset.toml` the tool stops with an error. The `preset.toml` in the project root is a commented example that can be used as it is.
 
 **Writing values.** Text values are written in double quotes: `format = "jpg"`, `name = "resize"`. Numbers and `true`/`false` are written without quotes: `quality = 80`, `keep_metadata = false`. Lines starting with `#` are comments. In this document a value in quotes is text you type with the quotes.
 
@@ -33,6 +33,9 @@ exif_orientation = "keep"
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
+| `input_folder` | string | `"input"` | Folder searched recursively for images. The command line option `-i`/`--input` takes precedence. A relative path is relative to the folder imgpipe is started in, not to the preset file. |
+| `output_folder` | string | `"output"` | Folder for the results. The command line option `-o`/`--output` takes precedence. Relative like `input_folder`. |
+| `seed` | int | random | Makes the random values repeatable (see `rnd_` steps). The command line option `--seed` takes precedence. |
 | `exif_orientation` | string | `"apply"` | What to do with the EXIF orientation tag of photos (phone photos are often stored sideways with a tag that tells viewers to rotate them): `"apply"`, `"keep"` or `"remove"`. Done when an image is read, before any step. |
 
 The values:
@@ -242,7 +245,7 @@ Changes saturation by a random percent in `[min_percent, max_percent]`, drawn se
 ## Command line
 
 ```
-uv run python -m imgpipe --preset preset.toml [-i input] [-o output] [--seed N] [--verbose | --quiet] [--dry-run]
+uv run python -m imgpipe [--preset preset.toml] [-i input] [-o output] [--seed N] [--verbose | --quiet] [--dry-run]
 ```
 
 By default one progress line is printed to stdout for each file as soon as it is saved, with paths as given on the command line, and a summary at the end (warnings stay on stderr):
@@ -253,9 +256,9 @@ input/sub/b.jpg -> output/sub/b.jpg
 2 images processed, 0 skipped.
 ```
 
-- `-i`, `--input` (default `input`): searched recursively for images.
-- `-o`, `--output` (default `output`): receives the results with the same relative paths (subfolders are mirrored). Names and formats come from the `[output]` section: by default they are the originals'; with a `format` the extension changes and name clashes get a number. Renaming files by a pattern (date and time with random digits) is not implemented yet. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
-- `--seed`: makes random values repeatable.
+- `-i`, `--input` (default: `input_folder` of the preset, else `input`): searched recursively for images.
+- `-o`, `--output` (default: `output_folder` of the preset, else `output`): receives the results with the same relative paths (subfolders are mirrored). Names and formats come from the `[output]` section: by default they are the originals'; with a `format` the extension changes and name clashes get a number. Renaming files by a pattern (date and time with random digits) is not implemented yet. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
+- `--seed` (default: `seed` of the preset, else random): makes random values repeatable.
 - `-v`, `--verbose`: adds what was applied to each progress line:
 
   ```

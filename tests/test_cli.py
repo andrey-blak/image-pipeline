@@ -49,13 +49,75 @@ def test_same_seed_twice_gives_identical_output(make_image, tmp_path):
         assert (tmp_path / "o1" / rel).read_bytes() == (tmp_path / "o2" / rel).read_bytes()
 
 
-def test_no_preset_does_nothing(make_image, tmp_path, capsys):
+def test_missing_default_preset_is_an_error(make_image, tmp_path, capsys, monkeypatch):
     make_image("in/a.png")
+    monkeypatch.chdir(tmp_path)
     code = main(["--input", str(tmp_path / "in"), "--output", str(tmp_path / "out")])
 
-    assert code == 0
-    assert "nothing to do" in capsys.readouterr().out.lower()
+    assert code == 2
+    assert "preset file not found: preset.toml" in capsys.readouterr().err
     assert not (tmp_path / "out").exists()
+
+
+def test_missing_explicit_preset_is_an_error(tmp_path, capsys):
+    assert main(["--preset", str(tmp_path / "nope.toml")]) == 2
+    assert "preset file not found" in capsys.readouterr().err
+
+
+def test_runs_without_any_options_using_preset_toml_and_the_default_folders(
+        make_image, tmp_path, capsys, monkeypatch):
+    make_image("input/a.png", size=(40, 20))
+    (tmp_path / "preset.toml").write_text(PRESET)
+    monkeypatch.chdir(tmp_path)
+
+    assert main([]) == 0
+    assert "1 image processed, 0 skipped." in capsys.readouterr().out
+    with Image.open(tmp_path / "output/a.png") as image:
+        assert image.size == (10, 5)
+
+
+def test_input_output_and_seed_come_from_the_preset(make_image, tmp_path, capsys, monkeypatch):
+    make_image("photos/a.png", size=(40, 20), color=(150, 110, 90))
+    (tmp_path / "preset.toml").write_text(
+        PRESET + '\n[options]\ninput_folder = "photos"\noutput_folder = "result"\nseed = 5\n')
+    monkeypatch.chdir(tmp_path)
+
+    assert main([]) == 0
+    capsys.readouterr()
+    assert main(["-i", "photos", "-o", "explicit", "--seed", "5"]) == 0
+    assert (tmp_path / "result/a.png").read_bytes() == (tmp_path / "explicit/a.png").read_bytes()
+    assert not (tmp_path / "output").exists()
+
+
+def test_command_line_overrides_the_preset(make_image, tmp_path, capsys, monkeypatch):
+    make_image("photos/a.png", size=(40, 20), color=(150, 110, 90))
+    make_image("other/a.png", size=(40, 20), color=(150, 110, 90))
+    (tmp_path / "preset.toml").write_text(
+        PRESET + '\n[options]\ninput_folder = "photos"\noutput_folder = "result"\nseed = 5\n')
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["-i", "other", "-o", "mine", "--seed", "6"]) == 0
+    assert main(["-i", "other", "-o", "plain", "--seed", "6", "--preset", "preset.toml"]) == 0
+    assert (tmp_path / "mine/a.png").read_bytes() == (tmp_path / "plain/a.png").read_bytes()
+    assert not (tmp_path / "result").exists()
+    # seed 6 from the command line, not 5 from the preset
+    assert main(["-i", "other", "-o", "five", "--seed", "5"]) == 0
+    assert (tmp_path / "mine/a.png").read_bytes() != (tmp_path / "five/a.png").read_bytes()
+
+
+def test_seed_zero_in_the_preset_is_used(make_image, tmp_path, monkeypatch):
+    make_image("input/a.png", size=(40, 20), color=(150, 110, 90))
+    (tmp_path / "preset.toml").write_text(PRESET + "\n[options]\nseed = 0\n")
+    monkeypatch.chdir(tmp_path)
+    assert main(["-q", "-o", "o1"]) == 0 and main(["-q", "-o", "o2", "--seed", "0"]) == 0
+    assert (tmp_path / "o1/a.png").read_bytes() == (tmp_path / "o2/a.png").read_bytes()
+
+
+def test_missing_input_folder_from_the_preset_is_reported(tmp_path, capsys, monkeypatch):
+    (tmp_path / "preset.toml").write_text(PRESET + '\n[options]\ninput_folder = "nowhere"\n')
+    monkeypatch.chdir(tmp_path)
+    assert main([]) == 2
+    assert "input folder not found: nowhere" in capsys.readouterr().err
 
 
 def test_bad_preset_reports_error(tmp_path, capsys):
@@ -176,9 +238,10 @@ def test_verbose_warning_stays_on_stderr_and_summary_is_last(make_image, tmp_pat
     assert captured.out.splitlines()[-1] == "2 images processed, 1 skipped."
 
 
-def test_verbose_without_preset_does_nothing(capsys):
-    assert main(["--verbose"]) == 0
-    assert "nothing to do" in capsys.readouterr().out.lower()
+def test_verbose_without_preset_is_an_error(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert main(["--verbose"]) == 2
+    assert "preset file not found" in capsys.readouterr().err
 
 
 def test_format_report_uses_paths_as_given():
@@ -249,9 +312,10 @@ def test_dry_run_still_rejects_a_bad_preset(tmp_path, capsys):
     assert "error: unknown step 'nope'" in capsys.readouterr().err
 
 
-def test_dry_run_without_preset_does_nothing(capsys):
-    assert main(["-n"]) == 0
-    assert "nothing to do" in capsys.readouterr().out.lower()
+def test_dry_run_without_preset_is_an_error(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert main(["-n"]) == 2
+    assert "preset file not found" in capsys.readouterr().err
 
 
 def test_singular_image_in_summary(make_image, tmp_path, capsys):
