@@ -449,3 +449,36 @@ def test_verbose_and_dry_run_show_the_rotation_entry(make_image, tmp_path, capsy
 
     assert re.search(r"\| size 100x60 -> \d+x\d+ \| rotation [+-][0-5]\.\d°$", real)
     assert dry == real
+
+
+def run_without_steps(make_image, tmp_path, config_text, capsys, name="in/a.jpg"):
+    make_image(name, size=(40, 20))
+    config = tmp_path / "config.toml"
+    config.write_text(config_text)
+    code = main(["--config", str(config), "--input", str(tmp_path / "in"),
+                 "--output", str(tmp_path / "out")])
+    return code, capsys.readouterr()
+
+
+def test_format_alone_converts_without_steps(make_image, tmp_path, capsys):
+    code, captured = run_without_steps(make_image, tmp_path, '[output]\nformat = "png"\n', capsys)
+    assert code == 0 and "1 image processed" in captured.out
+    with Image.open(tmp_path / "out/a.png") as image:
+        assert (image.format, image.size) == ("PNG", (40, 20))
+
+
+def test_keep_metadata_false_alone_strips_the_metadata(make_tagged_image, tmp_path, capsys):
+    make_tagged_image("in/a.jpg", 1)
+    config = tmp_path / "config.toml"
+    config.write_text("[output]\nkeep_metadata = false\n")
+    code = main(["--config", str(config), "--input", str(tmp_path / "in"),
+                 "--output", str(tmp_path / "out")])
+    assert code == 0
+    with Image.open(tmp_path / "out/a.jpg") as image:
+        assert not image.getexif()
+
+
+def test_background_alone_is_rejected_without_steps(make_image, tmp_path, capsys):
+    code, captured = run_without_steps(make_image, tmp_path, '[output]\nbackground = "red"\n', capsys)
+    assert code == 2
+    assert "define at least one [[steps]] table" in captured.err

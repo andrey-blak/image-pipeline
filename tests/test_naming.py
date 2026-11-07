@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from imgpipe.cli import main
 from imgpipe.config import load_config
@@ -235,6 +236,23 @@ def test_bare_top_level_pattern_gets_a_hint(tmp_path):
         load_config(path)
 
 
+def test_rename_alone_needs_no_steps(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text('[rename]\npattern = "N"\n')
+    loaded = load_config(path)
+    assert loaded.steps == [] and loaded.rename.pattern == "N"
+    path.write_text('steps = []\n[rename]\npattern = "N"\n')
+    assert load_config(path).steps == []
+
+
+@pytest.mark.parametrize("text", ["", "steps = []\n", "[output]\nbackground = \"red\"\n"])
+def test_no_steps_and_no_rename_is_still_an_error(tmp_path, text):
+    path = tmp_path / "config.toml"
+    path.write_text(text)
+    with pytest.raises(ConfigError, match="define at least one \\[\\[steps\\]\\] table"):
+        load_config(path)
+
+
 # ---------- pipeline ----------
 
 def run(tmp_path, pattern, counter_start=1, dry_run=False, seed=1, out="out", output=None):
@@ -359,3 +377,16 @@ def test_cli_reports_a_bad_pattern(make_image, tmp_path, capsys):
 
     assert code == 2
     assert "[rename]: 'pattern': 'YYY' is not valid" in capsys.readouterr().err
+
+
+def test_cli_renames_without_any_steps(make_image, tmp_path, capsys):
+    make_image("in/a.png", size=(40, 20))
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[rename]\npattern = "\'p\'C"\n')
+    code = main(["--config", str(config_path), "--input", str(tmp_path / "in"),
+                 "--output", str(tmp_path / "out")])
+
+    assert code == 0
+    assert "1 image processed, 0 skipped." in capsys.readouterr().out
+    with Image.open(tmp_path / "out/p1.png") as image:
+        assert image.size == (40, 20)

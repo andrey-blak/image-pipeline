@@ -42,6 +42,23 @@ def _load_table(path: Path, section: str, table: object, spec: dict[str, type]) 
     return dict(table)
 
 
+def _changes_files(
+    options: dict, output_values: dict, output: OutputSettings, rename: RenameSettings | None
+) -> bool:
+    """Whether the global settings alone change the files, so that no step is needed.
+
+    Only settings that were written count: ``keep_metadata`` is false by default, and
+    ``format = "keep"``, ``keep_metadata = true`` or ``fix_orientation = false`` change nothing.
+    """
+    return (
+        rename is not None
+        or output.format != "keep"
+        or "quality" in output_values
+        or output_values.get("keep_metadata") is False
+        or options.get("fix_orientation") is True
+    )
+
+
 def load_config(path: Path) -> Config:
     """Read a TOML pipeline config: the steps in file order and the global tables."""
     try:
@@ -77,7 +94,9 @@ def load_config(path: Path) -> Config:
             raise ConfigError(f"{path}: [rename]: {e}") from e
 
     entries = data.get("steps")
-    if not isinstance(entries, list) or not entries:
+    if entries in (None, []) and _changes_files(options, output_values, output, rename):
+        entries = []  # renaming, converting etc. alone is a valid run
+    elif not isinstance(entries, list) or not entries:
         raise ConfigError(f"{path}: define at least one [[steps]] table")
 
     steps = []

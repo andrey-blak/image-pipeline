@@ -228,3 +228,43 @@ def test_output_key_at_the_top_level_gets_a_hint(tmp_path):
 def test_output_must_be_a_table(tmp_path, text):
     with pytest.raises(ConfigError, match=r"\[output\] must be a table"):
         load_config(write(tmp_path, f"{text}\n{STEP}"))
+
+
+# ---------- runs without steps ----------
+
+CHANGES_FILES = [
+    '[output]\nformat = "webp"',
+    '[output]\nformat = "jpeg"',
+    '[output]\nquality = 80',
+    '[output]\nkeep_metadata = false',
+    '[options]\nfix_orientation = true',
+    '[rename]\npattern = "N"',
+]
+CHANGES_NOTHING = [
+    "",
+    "[output]",
+    "[options]",
+    '[output]\nformat = "keep"',
+    "[output]\nkeep_metadata = true",
+    '[output]\nbackground = "red"',
+    "[options]\nfix_orientation = false",
+]
+
+
+@pytest.mark.parametrize("text", CHANGES_FILES)
+@pytest.mark.parametrize("steps_line", ["", "steps = []\n"])
+def test_no_steps_needed_when_the_global_tables_change_files(tmp_path, text, steps_line):
+    path = write(tmp_path, f"{steps_line}{text}\n")
+    assert load_config(path).steps == []
+
+
+@pytest.mark.parametrize("text", CHANGES_NOTHING)
+@pytest.mark.parametrize("steps_line", ["", "steps = []\n"])
+def test_no_steps_and_nothing_changed_keeps_the_error(tmp_path, text, steps_line):
+    with pytest.raises(ConfigError, match=r"define at least one \[\[steps\]\] table"):
+        load_config(write(tmp_path, f"{steps_line}{text}\n"))
+
+
+def test_steps_are_kept_next_to_a_file_changing_table(tmp_path):
+    config = load_config(write(tmp_path, f'[output]\nformat = "png"\n{STEP}'))
+    assert [s.name for s in config.steps] == ["resize"]

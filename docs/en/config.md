@@ -4,6 +4,16 @@ A TOML file passed with `--config`. It is separate from `pyproject.toml`. Withou
 
 The file holds an ordered list of steps (`[[steps]]` tables). Each step has a `name` and its own options. Steps run in the order written; every step receives the result of the previous one. Unknown step names, unknown or missing options, and values of the wrong type are rejected before any image is processed.
 
+At least one step is required, unless the global tables alone change the files. Then the steps may be left out (or `steps = []`) and the images are only renamed, converted, re-saved or made upright. That is the case when the file has any of:
+
+- a `[rename]` table;
+- `format` in `[output]` other than `keep`;
+- `quality` in `[output]`;
+- `keep_metadata = false` written in `[output]` (it is the default, so it counts only when written; `keep_metadata = true` does not count);
+- `fix_orientation = true` written in `[options]` (`false` does not count).
+
+`background` alone counts for nothing. Without steps and without one of these the file is rejected.
+
 Besides the steps, the file may contain three tables of global settings: `[options]`, `[output]` and `[rename]`. Only the `steps`, `options`, `output` and `rename` keys are accepted at the top level.
 
 ## `[options]` table
