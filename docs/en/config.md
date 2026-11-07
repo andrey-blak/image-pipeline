@@ -29,6 +29,20 @@ With `fix_orientation` on, an image with an orientation tag is rotated or mirror
 
 Steps whose name starts with `rnd_` draw random values separately for each image; the values are repeatable with `--seed`. Other steps are deterministic.
 
+### `trim_borders`
+Cuts off solid-color or transparent margins around the content (scans, screenshots, product photos on a plain background). Put it before `resize`, so the target size is reached with the margins already gone. If nothing is found, or the whole image is background, the image is left as it is.
+
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `background` | string | `"auto"` | What counts as border: `auto`, `transparent`, or a color (a name such as `white`, or hex such as `#ffffff`). |
+| `tolerance` | int | `0` | 0-255. How much two colors may differ and still count as the same. The default `0` means exactly the same. Used for the border pixels (a pixel is border when it differs from the background by at most this much: the largest difference of any color channel, or for `transparent` its alpha value) and, with `background = "auto"`, for comparing the four corners. Allows for noise and compression artifacts. |
+
+- `auto` takes the background from the four corner pixels, **but only if they agree**: no two corners may differ from each other by more than `tolerance` in any color channel (alpha included). With the default tolerance `0` they must be exactly the same color. If they do not agree there is no uniform border and nothing is cut. When they agree, the top-left corner's color is the background; if all four corners are transparent (alpha at most `tolerance`) the background is "transparent", whatever their hidden color values. Photos saved as JPEG or scanned often have slightly different corner pixels even in a white margin (for example `255,255,255` and `254,254,254`): set a `tolerance` that covers the noise, e.g. `tolerance = 5`, or name the color: `background = "#ffffff"` with a `tolerance`.
+- `transparent` treats pixels whose alpha is at most `tolerance` as border. It does not look at the corners.
+- A color treats pixels close to it as border, and does not look at the corners either. Transparent areas of an image with transparency count as that color. Only the color itself is used, not an alpha part.
+- The cut is a rectangle: the smallest one that contains everything that is not border, so margins of different widths are all removed, and a speck in a margin keeps the margin around it.
+- With `--verbose` or `--dry-run`, a `trim` entry such as `trim L12 T8 R28 B32` shows how many pixels were removed from the left, top, right and bottom (only when something was cut).
+
 ### `resize`
 Scales an image keeping its proportions. Which options apply depends on `mode`:
 
@@ -73,6 +87,7 @@ uv run python -m imgpipe --config config.toml [--input input] [--output output] 
 
   - `size`: the size before and after all steps, or `WxH (unchanged)`. The "before" size is that of the upright image when the orientation was fixed.
   - `orientation`: shown only when the EXIF orientation fix changed the image, e.g. `orientation EXIF (rotated 90° cw)`. It comes right after `size`; other possible texts are `rotated 90° ccw`, `rotated 180°`, `mirrored horizontally`, `mirrored vertically`, `transposed` and `anti-transposed`.
+  - `trim`: shown only when `trim_borders` cut something: the pixels removed from the left, top, right and bottom, e.g. `trim L12 T8 R28 B32`.
   - `saturation`: the percent applied by `rnd_saturation`, or `n/a (grayscale)` when the image has no color. If several `rnd_saturation` steps are used, the values are listed separated by commas.
 - `-n`, `--dry-run`: shows what would be done without writing anything (the output folder is not even created). It always prints the per-file lines described under `--verbose`.
   - Every image is read and the steps are applied, so the sizes and random values are exactly those a real run with the same `--seed` would give, and unreadable files are reported as in a real run.

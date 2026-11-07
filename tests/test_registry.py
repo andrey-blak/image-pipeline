@@ -7,7 +7,7 @@ from imgpipe.steps import REGISTRY, Step, create_step, register
 
 
 def test_builtin_steps_are_registered():
-    assert {"resize", "rnd_saturation"} <= set(REGISTRY)
+    assert {"resize", "rnd_saturation", "trim_borders"} <= set(REGISTRY)
 
 
 def test_create_step_by_name():
@@ -17,7 +17,7 @@ def test_create_step_by_name():
 
 
 def test_unknown_step_lists_known_ones():
-    with pytest.raises(ConfigError, match="unknown step 'nope'.*resize.*saturation"):
+    with pytest.raises(ConfigError, match="unknown step 'nope'.*resize.*saturation.*trim_borders"):
         create_step("nope", {})
 
 

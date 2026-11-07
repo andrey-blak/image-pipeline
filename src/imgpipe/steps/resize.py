@@ -1,23 +1,11 @@
 from dataclasses import dataclass
 
-from PIL import Image, ImageColor
+from PIL import Image
 
+from imgpipe.colors import TRANSPARENT, parse_color
 from imgpipe.steps import Context, Step, normalize_mode, register
 
 MODES = ("longest_side", "padding", "crop")
-TRANSPARENT = (0, 0, 0, 0)
-
-
-def _parse_fill(value: str) -> tuple[int, int, int, int]:
-    if value == "transparent":
-        return TRANSPARENT
-    try:
-        return ImageColor.getcolor(value, "RGBA")
-    except ValueError:
-        raise ValueError(
-            f"invalid fill color {value!r}; use 'transparent', a name like 'white', "
-            "or hex like '#ffffff'"
-        ) from None
 
 
 @register("resize")
@@ -63,7 +51,7 @@ class Resize(Step):
         if self.mode == "crop" and self.fill is not None:
             raise ValueError(f"option 'fill' is not used by mode '{self.mode}'")
         if self.mode == "padding":
-            self._fill_color = _parse_fill(self.fill or "transparent")
+            self._fill_color = parse_color(self.fill or "transparent", what="fill color")
 
     # The result size is computed from the input size alone, not from the pixels.
     depends_on_pixels = False

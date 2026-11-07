@@ -6,6 +6,15 @@
 # Make photos upright according to their EXIF orientation tag (default: true).
 # fix_orientation = true
 
+# Cut off solid-color or transparent margins (put it before `resize`).
+[[steps]]
+name = "trim_borders"
+background = "auto"   # default: the four corners must be the same color (within the tolerance), otherwise nothing is cut.
+                      # Or "transparent", a color name, or "#rrggbb".
+tolerance = 5         # 0-255, default - 0: how far colors may differ and still be "the same":
+                      # corners from each other (auto) or border pixels from the background.
+                      # 0 = exact. Photos and scans usually need approximately 5-10.
+
 # Scale keeping proportions: the longer side becomes `size` pixels.
 [[steps]]
 name = "resize"

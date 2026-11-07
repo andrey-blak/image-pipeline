@@ -292,3 +292,31 @@ def test_old_top_level_fix_orientation_is_rejected_with_a_hint(tmp_path, capsys)
     (tmp_path / "in").mkdir()
     assert run_cli(tmp_path) == 2
     assert "option 'fix_orientation' belongs in the [options] table" in capsys.readouterr().err
+
+
+# ---------- trim_borders ----------
+
+TRIM_CONFIG = """
+[[steps]]
+name = "trim_borders"
+
+[[steps]]
+name = "resize"
+size = 10
+"""
+
+
+def test_verbose_and_dry_run_show_the_trim_entry(tmp_path, capsys):
+    (tmp_path / "in").mkdir()
+    image = Image.new("RGB", (100, 60), (255, 255, 255))
+    image.paste((200, 30, 30), (12, 8, 72, 28))
+    image.save(tmp_path / "in/framed.png")
+    (tmp_path / "config.toml").write_text(TRIM_CONFIG)
+
+    run_cli(tmp_path, "-v")
+    real = capsys.readouterr().out.splitlines()[0]
+    run_cli(tmp_path, "-n")
+    dry = capsys.readouterr().out.splitlines()[1]
+
+    assert real.endswith("| size 100x60 -> 10x3 | trim L12 T8 R28 B32")
+    assert dry == real

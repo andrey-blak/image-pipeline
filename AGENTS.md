@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Layout
-- `src/imgpipe/` – Python package (src layout): `cli.py`, `config.py` (TOML -> steps), `pipeline.py` (runner), `imageio.py` (find/load/save), `steps/` (one module per step plus the registry in `steps/__init__.py`)
+- `src/imgpipe/` – Python package (src layout): `cli.py`, `config.py` (TOML -> steps), `pipeline.py` (runner), `imageio.py` (find/load/save), `colors.py` (color parsing shared by steps), `steps/` (one module per step plus the registry in `steps/__init__.py`)
 - `tests/` – tests; test images are generated in `tmp_path`, none are committed
 - `config.example.toml` – commented example config
 - `docs/en/` – English documentation (other languages later, e.g. `docs/ru/`)

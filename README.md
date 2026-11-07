@@ -4,7 +4,7 @@ Batch image transformation tool. Reads images from an input folder, applies a co
 
 Python package: `imgpipe`. Pipeline configuration is TOML. Dependency management: uv.
 
-**Status: early.** Available steps: `resize`, `rnd_saturation`. Photos with an EXIF orientation tag are made upright first (`fix_orientation`, on by default). Output currently keeps the original names, formats and subfolders; renaming and format conversion are not implemented yet.
+**Status: early.** Available steps: `trim_borders`, `resize`, `rnd_saturation`. Photos with an EXIF orientation tag are made upright first (`fix_orientation`, on by default). Output currently keeps the original names, formats and subfolders; renaming and format conversion are not implemented yet.
 
 ## Quick start
 
