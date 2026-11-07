@@ -2,7 +2,7 @@ name: Build executables
 
 on:
   push:
-    branches: [master, main]
+    branches: [master, main, build-test]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -65,7 +65,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mv artifacts/imgpipe-linux/imgpipe imgpipe-linux
-          mv artifacts/imgpipe-windows/imgpipe.exe imgpipe-windows.exe
-          chmod +x imgpipe-linux
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes imgpipe-linux imgpipe-windows.exe preset.toml
+          mv artifacts/imgpipe-linux/imgpipe imgpipe
+          mv artifacts/imgpipe-windows/imgpipe.exe imgpipe.exe
+          chmod +x imgpipe
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes imgpipe imgpipe.exe preset.toml
