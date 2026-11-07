@@ -45,7 +45,8 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.dry_run:
             print("Dry run (no changes will be made):", flush=True)
-        result = Pipeline(config.steps, config.fix_orientation, config.output).run(
+        pipeline = Pipeline(config.steps, config.fix_orientation, config.output, config.rename)
+        result = pipeline.run(
             args.input, args.output, random.Random(args.seed), on_file, dry_run=args.dry_run
         )
     except ConfigError as e:

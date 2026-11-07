@@ -3,13 +3,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from imgpipe.errors import ConfigError
+from imgpipe.naming import RenameSettings
 from imgpipe.output import OutputSettings
 from imgpipe.steps import Step, create_step
 
 # Tables of global settings: name -> option name -> expected type.
 OPTIONS = {"fix_orientation": bool}
 OUTPUT = {"format": str, "quality": int, "background": str, "keep_metadata": bool}
-TABLES = {"options": OPTIONS, "output": OUTPUT}
+RENAME = {"pattern": str, "counter_start": int}
+TABLES = {"options": OPTIONS, "output": OUTPUT, "rename": RENAME}
 
 
 @dataclass
@@ -17,6 +19,7 @@ class Config:
     steps: list[Step]
     fix_orientation: bool = True
     output: OutputSettings = field(default_factory=OutputSettings)
+    rename: RenameSettings | None = None
 
 
 def _load_table(path: Path, section: str, table: object, spec: dict[str, type]) -> dict:
@@ -63,6 +66,15 @@ def load_config(path: Path) -> Config:
         output = OutputSettings(**output_values)
     except ValueError as e:
         raise ConfigError(f"{path}: [output]: {e}") from e
+    rename = None
+    if "rename" in data:
+        rename_values = _load_table(path, "rename", data["rename"], RENAME)
+        if "pattern" not in rename_values:
+            raise ConfigError(f"{path}: [rename] needs a 'pattern'")
+        try:
+            rename = RenameSettings(**rename_values)
+        except ValueError as e:
+            raise ConfigError(f"{path}: [rename]: {e}") from e
 
     entries = data.get("steps")
     if not isinstance(entries, list) or not entries:
@@ -74,4 +86,4 @@ def load_config(path: Path) -> Config:
             raise ConfigError(f"{path}: [[steps]] #{index} needs a 'name'")
         step_options = {key: value for key, value in entry.items() if key != "name"}
         steps.append(create_step(entry["name"], step_options))
-    return Config(steps=steps, output=output, **options)
+    return Config(steps=steps, output=output, rename=rename, **options)

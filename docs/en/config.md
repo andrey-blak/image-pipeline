@@ -4,7 +4,7 @@ A TOML file passed with `--config`. It is separate from `pyproject.toml`. Withou
 
 The file holds an ordered list of steps (`[[steps]]` tables). Each step has a `name` and its own options. Steps run in the order written; every step receives the result of the previous one. Unknown step names, unknown or missing options, and values of the wrong type are rejected before any image is processed.
 
-Besides the steps, the file may contain two tables of global settings: `[options]` and `[output]`. Only the `steps`, `options` and `output` keys are accepted at the top level.
+Besides the steps, the file may contain three tables of global settings: `[options]`, `[output]` and `[rename]`. Only the `steps`, `options`, `output` and `rename` keys are accepted at the top level.
 
 ## `[options]` table
 
@@ -80,7 +80,59 @@ When converting, two files can get the same name: `a.png` and `a.jpg` in one fol
   input/a.png -> output/a-1.webp
 ```
 
-(With `--dry-run`: "would get".) With `format = "keep"` names never clash. Files left from earlier runs in the output folder are overwritten, as before.
+(With `--dry-run`: "would get".) With `format = "keep"` and no `[rename]` names never clash. Files left from earlier runs in the output folder are overwritten, as before.
+
+## `[rename]` table
+
+Gives the result files new names built from a pattern. Like `[output]` it is not a pipeline step, it is applied last, and the table may be written anywhere in the file. Without it the files keep their names. The new name has no connection to the original unless the pattern says so (`N`).
+
+```toml
+[rename]
+pattern = "N-YYYY-MM-dd-HHmmssSSS-CCC-RRaaAALLBB"
+# counter_start = 1
+```
+
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `pattern` | string | required | The file name without its extension, built from the tokens below. |
+| `counter_start` | int | `1` | The first value of the counter `C` (not negative). |
+
+The pattern gives only the name. The extension is added automatically: the original one (as spelled) with `format = "keep"`, or the extension of the new format. Subfolders are mirrored as usual; only the file name changes. If two files get the same name, the later one gets a number (see [Name clashes](#name-clashes)).
+
+### Tokens
+
+A token is a run of the same letter; how many times it is repeated matters. The tokens follow Java's `DateTimeFormatter`. For numbers, one letter means "as many digits as needed, no padding"; more letters mean a zero-padded field of that width.
+
+| Token | Meaning | Examples |
+|---|---|---|
+| `N` | original file name without the extension | `Holiday` |
+| `E` | original extension, as spelled, without the dot (empty if none) | `jpg` |
+| `Y` | year: `YYYY` four digits, `YY` two digits | `2023`, `23` |
+| `M` | month: `M`, `MM` | `8`, `08` |
+| `d` | day of month: `d`, `dd` | `5`, `05` |
+| `H` | hour of day, 0-23: `H`, `HH` | `14` |
+| `h` | clock hour, 1-12: `h`, `hh` (there is no AM/PM marker) | `2`, `02` |
+| `m` | minute: `m`, `mm` | `3`, 03` |
+| `s` | second: `s`, `ss` | `9`, `09` |
+| `S` | fraction of a second: `S` tenths, `SS` hundredths, `SSS` milliseconds | `8`, `87`, `874` |
+| `C` | counter: `C` no padding, `CCC` at least three digits | `7`, `007` |
+| `R` | random digits (0-9), one per letter | `8`, `3` |
+| `A` | random uppercase letters (A-Z) | `K`, `J`, `X` |
+| `a` | random lowercase letters (a-z) | `k`, `j`, `x` |
+| `L` | random letters of both cases | `K`, `j`, `X` |
+| `B` | random digits and letters | `A`, `7`, `k` |
+| `U` | UUID (random, version 4) | `8be4df61-93ca-41d2-aa0d-00e098032b8c` |
+
+Notes:
+
+- An empty pattern is rejected.
+- Allowed repeat counts: `N`, `E`, `U` once; `Y` two or four; `M`, `d`, `H`, `h`, `m`, `s` once or twice; `S` one to three; `C` and the random tokens any number. Anything else is rejected.
+- The date and time are the **processing time** of each file. In a dry run the names show the dry run's own time.
+- The counter counts the files written in this run in processing order, starting at `counter_start`; a file that could not be processed does not use a number. The counter is not reset in subfolders.
+- Random parts and UUIDs come from the same generator as the random steps, so `--seed` makes them repeatable.
+- **Other letters are copied as they are**, so `photo_` works. But any token letter is a token: `IMG_` is read as `I`, the month, `G_`. Put literal text in single quotes: `'IMG_'CCC` gives `IMG_007`. Inside quotes `''` is one quote (`'it''s'` gives `it's`), and `''` outside quotes is also one quote.
+- The literal text must not contain `/ \ : * ? " < > |`.
+- A pattern without random parts or a counter or the original name makes every file the same name, and the clash numbering (`-1`, `-2`, ...) then separates them.
 
 ## Steps
 

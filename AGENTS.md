@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Layout
-- `src/imgpipe/` – Python package (src layout): `cli.py`, `config.py` (TOML -> steps), `pipeline.py` (runner), `imageio.py` (find/load, EXIF orientation, metadata), `output.py` (the `[output]` section: format, quality, background, metadata, writing files), `colors.py` (color parsing shared by steps), `rotation.py` (rotation shared by `rotate` and `rnd_rotate`), `steps/` (one module per step plus the registry in `steps/__init__.py`)
+- `src/imgpipe/` – Python package (src layout): `cli.py`, `config.py` (TOML -> steps), `pipeline.py` (runner), `imageio.py` (find/load, EXIF orientation, metadata), `output.py` (the `[output]` section: format, quality, background, metadata, writing files), `naming.py` (the `[rename]` section: file name patterns), `colors.py` (color parsing shared by steps), `rotation.py` (rotation shared by `rotate` and `rnd_rotate`), `steps/` (one module per step plus the registry in `steps/__init__.py`)
 - `tests/` – tests; test images are generated in `tmp_path`, none are committed
 - `config.example.toml` – commented example config
 - `docs/en/` – English documentation (other languages later, e.g. `docs/ru/`)
@@ -18,7 +18,7 @@
 - Everything the project needs stays inside the project.
 - Ask before creating anything outside the project folder; clean up temporary files afterwards.
 - Pipeline config is TOML, separate from `pyproject.toml` (project metadata only). No config given: the tool does nothing.
-- EXIF orientation fix always runs first. It is not a step: it lives in `imageio.py` (`load`, `fix_orientation`) and is applied by `Pipeline.run`; the option `fix_orientation` (default true) in the config's `[options]` table switches it off. Global settings live in `[options]` (a table, so it may appear anywhere in the file; bare top-level keys after a `[[steps]]` would belong to that step); add new ones to `OPTIONS` in `config.py`. Output (format, quality, background, metadata) is the `[output]` config table and naming will be one too: they are config sections applied after the last step, not pipeline steps (`output.py`; a new format = one entry in `FORMATS`).
+- EXIF orientation fix always runs first. It is not a step: it lives in `imageio.py` (`load`, `fix_orientation`) and is applied by `Pipeline.run`; the option `fix_orientation` (default true) in the config's `[options]` table switches it off. Global settings live in `[options]` (a table, so it may appear anywhere in the file; bare top-level keys after a `[[steps]]` would belong to that step); add new ones to `OPTIONS` in `config.py`. Output (format, quality, background, metadata) is the `[output]` config table and naming is the `[rename]` one (`naming.py`): they are config sections applied after the last step, not pipeline steps (`output.py`; a new format = one entry in `FORMATS`).
 - A new step = one module in `src/imgpipe/steps/` (a dataclass registered with `@register("name")`, its fields are the config options) + an import line in `steps/__init__.py` + tests + a section in `docs/en/config.md`.
 - Steps that use random values are named with an `rnd_` prefix (e.g. `rnd_saturation`); deterministic steps have no prefix.
 - A step reports what it applied for `--verbose` with `ctx.record(key, text)` (e.g. `saturation`, `+4.2%`). Size changes are measured by the pipeline, so steps do not record them.

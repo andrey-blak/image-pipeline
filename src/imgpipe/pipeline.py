@@ -1,12 +1,14 @@
 import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image
 
 from imgpipe import imageio, output
 from imgpipe.errors import ConfigError
+from imgpipe.naming import RenameSettings
 from imgpipe.output import OutputSettings
 from imgpipe.steps import Context, Step
 
@@ -49,10 +51,14 @@ class Pipeline:
         steps: list[Step],
         fix_orientation: bool = True,
         output_settings: OutputSettings | None = None,
+        rename: RenameSettings | None = None,
+        clock: Callable[[], datetime] = datetime.now,
     ):
         self.steps = steps
         self.fix_orientation = fix_orientation
         self.output = output_settings or OutputSettings()
+        self.rename = rename
+        self.clock = clock
 
     def process(self, image: Image.Image, ctx: Context, dry_run: bool = False) -> Image.Image:
         """Run the steps in order.
@@ -106,6 +112,11 @@ class Pipeline:
                     image, oriented = imageio.fix_orientation(image, loaded.orientation)
                 processed = self.process(image, ctx, dry_run)
                 wanted = self.output.target_path(relative, loaded.format)
+                if self.rename:
+                    # Files that failed earlier do not use a counter value.
+                    counter = self.rename.counter_start + len(result.processed)
+                    stem = self.rename.name(relative, counter, self.clock(), rng)
+                    wanted = wanted.with_name(stem + wanted.suffix)
                 final = _free_name(wanted, used)
                 if not dry_run:
                     output.write(

@@ -14,6 +14,17 @@
 # background = "white"     # opaque color for transparency where the format has none (jpg, gif, bmp)
 # keep_metadata = false    # false: EXIF/XMP/comments are dropped; the ICC color profile always stays
 
+# New file names built from a pattern. Also a table that may be placed anywhere in the file.
+# Without it the files keep their names. The extension is added automatically.
+# [rename]
+# pattern = "N-YYYY-MM-dd-HHmmssSSS-CCC-RRaaAALLBB"
+#     N name, E original extension, Y year, M month, d day, H hour (0-23), h hour (1-12),
+#     m minute, s second, S fraction of a second (S, SS, SSS), C counter,
+#     R random digits, A random A-Z, a random a-z, L random letters, B random digits and letters,
+#     U UUID. Repeat a letter to set the width; other characters are copied as they are.
+#     Literal text containing token letters goes in single quotes: "'IMG_'CCC"
+# counter_start = 1
+
 # Cut off solid-color or transparent margins (put it before `resize`).
 [[steps]]
 name = "trim_borders"
