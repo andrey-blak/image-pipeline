@@ -67,9 +67,9 @@ corners = "crop"
 # fill = "white"
 
 # Rotate by a fixed angle (positive - clockwise):
-[[steps]]
-name = "rotate"
-angle = 90
+# [[steps]]
+# name = "rotate"
+# angle = 90
 
 # Scale keeping proportions.
 [[steps]]
