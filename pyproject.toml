@@ -1,6 +1,6 @@
 [project]
 name = "imgpipe"
-version = "0.1.0"
+version = "0.2.0"
 description = "Batch image transformation pipeline"
 requires-python = ">=3.11"
 dependencies = ["pillow"]
