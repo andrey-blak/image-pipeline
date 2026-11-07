@@ -6,6 +6,7 @@ A step is a dataclass whose fields are its config options. Register it with
 
 import dataclasses
 import random
+import types
 import typing
 from dataclasses import dataclass
 
@@ -60,6 +61,9 @@ class Step:
 
 
 def _check_type(step: str, key: str, value: typing.Any, expected: type) -> None:
+    if typing.get_origin(expected) in (typing.Union, types.UnionType):
+        # `X | None` marks an optional option; TOML has no null, so check against X.
+        (expected,) = (arg for arg in typing.get_args(expected) if arg is not type(None))
     if expected is float:
         ok = isinstance(value, (int, float)) and not isinstance(value, bool)
     elif expected is int:

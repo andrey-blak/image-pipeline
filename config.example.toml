@@ -5,8 +5,19 @@
 [[steps]]
 name = "resize"
 size = 300
-# mode = "longest_side"   # the only mode so far
-# upscale = false         # true: also enlarge images smaller than `size`
+# mode = "longest_side"   # default
+# upscale = false         # true: also enlarge images smaller than the target
+
+# Other modes (replace the lines above):
+#   Fit inside an exact size, fill the rest (`size = 300` alone means 300x300):
+#     mode = "padding"
+#     width = 300
+#     height = 200
+#     fill = "white"        # default "transparent"; "#rrggbb" also works
+#   Cover an exact size, cut off the overflow evenly (center-crop):
+#     mode = "crop"
+#     width = 300
+#     height = 200
 
 # Change saturation by a random percent in this range, drawn per image.
 [[steps]]

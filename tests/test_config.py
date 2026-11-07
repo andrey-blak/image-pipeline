@@ -58,3 +58,28 @@ def test_unknown_top_level_key(tmp_path):
 def test_step_errors_propagate(tmp_path):
     with pytest.raises(ConfigError, match="unknown step 'rotate'"):
         load_steps(write(tmp_path, '[[steps]]\nname = "rotate"\n'))
+
+
+def test_resize_padding_options_loaded(tmp_path):
+    path = write(
+        tmp_path,
+        """
+[[steps]]
+name = "resize"
+mode = "padding"
+width = 300
+height = 200
+fill = "#ffffff"
+upscale = true
+""",
+    )
+    (step,) = load_steps(path)
+    assert (step.mode, step.width, step.height, step.fill, step.upscale) == (
+        "padding", 300, 200, "#ffffff", True
+    )
+
+
+def test_resize_invalid_mode_options_reported_with_step_name(tmp_path):
+    path = write(tmp_path, '[[steps]]\nname = "resize"\nmode = "crop"\nwidth = 5\n')
+    with pytest.raises(ConfigError, match="step 'resize': mode 'crop' needs"):
+        load_steps(path)

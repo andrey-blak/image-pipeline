@@ -11,13 +11,23 @@ Only the `steps` key is accepted at the top level for now.
 Steps whose name starts with `rnd_` draw random values separately for each image; the values are repeatable with `--seed`. Other steps are deterministic.
 
 ### `resize`
-Scales an image keeping its proportions.
+Scales an image keeping its proportions. Which options apply depends on `mode`:
+
+| Mode | Result | Options |
+|---|---|---|
+| `longest_side` (default) | The longer side becomes `size`; the other side follows. | `size` (required) |
+| `padding` | Exactly the target size: the image is fitted inside it and the free area is filled. | `size` or `width` + `height`; `fill` |
+| `crop` | Exactly the target size: the image covers it completely, the overflow is cut off evenly on both sides (center-crop). | `size` or `width` + `height` |
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `size` | int | required | Target length in pixels (at least 1). |
-| `mode` | string | `"longest_side"` | `longest_side`: the longer side becomes `size`. |
-| `upscale` | bool | `false` | Also enlarge images whose longer side is smaller than `size`. |
+| `mode` | string | `"longest_side"` | `longest_side`, `padding` or `crop`. |
+| `size` | int | none | `longest_side`: target length of the longer side (required). `padding`/`crop`: shorthand for a square, `width = height = size`. Must be at least 1. |
+| `width`, `height` | int | none | `padding`/`crop`: target size in pixels; give both, or use `size` instead (not both). |
+| `upscale` | bool | `false` | Also enlarge images that are smaller than the target. Without it: `longest_side` leaves a small image unchanged; `padding` keeps it at its size, centered on the canvas; `crop` leaves an image unchanged if it is smaller than the target in either direction, so output sizes can vary. |
+| `fill` | string | `"transparent"` | `padding` only. `transparent`, a color name such as `white`, or hex such as `#ffffff` (`#rrggbbaa` for a partly transparent fill). |
+
+Options that a mode does not use are rejected. Transparent areas are kept only in formats that support transparency (PNG, WebP). JPEG output currently turns transparent areas black, until the output section gets a background color option; use `fill = "white"` (or another color) when the results will be JPEG.
 
 ### `rnd_saturation`
 Changes saturation by a random percent in `[min_percent, max_percent]`, drawn separately for each image (repeatable with `--seed`). Transparency is preserved. Grayscale images are left unchanged.

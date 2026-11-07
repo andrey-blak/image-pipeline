@@ -107,3 +107,25 @@ def test_context_is_shared_across_images(make_image, tmp_path):
     pl = pipeline(("rnd_saturation", {"min_percent": 3, "max_percent": 40}))
     pl.run(tmp_path / "in", tmp_path / "out", random.Random(3))
     assert (tmp_path / "out/a.png").read_bytes() != (tmp_path / "out/b.png").read_bytes()
+
+
+def test_padding_then_saturation_gives_exact_size(make_image, tmp_path):
+    make_image("in/wide.png", size=(60, 20), color=(150, 110, 90))
+    make_image("in/tall.png", size=(20, 60), color=(150, 110, 90))
+    pl = pipeline(("resize", {"mode": "padding", "size": 30, "fill": "white"}), SATURATE)
+    result = pl.run(tmp_path / "in", tmp_path / "out", random.Random(1))
+
+    assert len(result.processed) == 2 and not result.skipped
+    for name in ("wide.png", "tall.png"):
+        with Image.open(tmp_path / "out" / name) as out:
+            assert out.size == (30, 30)
+
+
+def test_crop_runs_on_jpeg_and_png(make_image, tmp_path):
+    make_image("in/a.jpg", size=(60, 20))
+    make_image("in/b.png", size=(20, 60))
+    pl = pipeline(("resize", {"mode": "crop", "width": 10, "height": 10}))
+    pl.run(tmp_path / "in", tmp_path / "out", random.Random(1))
+    for name in ("a.jpg", "b.png"):
+        with Image.open(tmp_path / "out" / name) as out:
+            assert out.size == (10, 10)
