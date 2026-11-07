@@ -13,7 +13,7 @@ Result: `dist/onefile/imgpipe` (Linux) or `dist/onefile/imgpipe.exe` (Windows). 
 
 ## Releases (Linux and Windows)
 
-`.github/workflows/build.yml` builds both executables on GitHub runners, runs the tests and the executable smoke test, and uploads the files as artifacts. Start it from the Actions tab (*Run workflow*), or push a tag such as `v0.1.0`: the tag also creates a GitHub release with `imgpipe-linux` and `imgpipe-windows.exe`.
+`.github/workflows/build.yml` builds both executables on GitHub runners, runs the tests and the executable smoke test, and uploads the files as artifacts. Start it from the Actions tab (*Run workflow*), or push a tag such as `v0.1.0`: the tag also creates a GitHub release with the executables and `preset.toml` (the example preset, which the executables read by default).
 
 ## Notes
 

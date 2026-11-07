@@ -6,27 +6,31 @@ Python package: `imgpipe`. The pipeline preset is a TOML file. Dependency manage
 
 **Status.** Available steps: `trim_borders`, `rotate`, `rnd_rotate`, `resize`, `auto_brightness`, `rnd_saturation`. Photos with an EXIF orientation tag are made upright first (`exif_orientation`: `"apply"` by default, or `"keep"` / `"remove"`). Output (`[output]` section): keep the original format or convert to png, jpg, webp, avif, gif, tiff or bmp, with quality, a background for flattened transparency, and metadata stripping (on by default). Result files can be renamed from a pattern (`[rename]` section): original name, date and time, counter, random digits and letters, UUID.
 
-## Python package quick start
+## Quick start
+
+The simplest run needs no options:
+
+1. Put `preset.toml` (the example in this repository; releases include it) in a folder, and your images in an `input` folder next to it.
+2. Run `./imgpipe` (Windows: `imgpipe.exe`) from that folder.
+3. The results appear in the `output` folder. Your originals are never modified.
+
+```bash
+./imgpipe
+```
+
+`preset.toml` says what is done to the images (resize, rotate, convert, rename, ...). Edit it, or see `docs/en/preset.md`. The folders and the seed for random values can be set in the preset too, or with the options below.
+
+## Standalone application
+
+Standalone executables and `preset.toml` are available for Linux and Windows in the project's releases. They need no Python and take the same command line options as the Python package.
+
+## Python package
 
 ```bash
 uv sync
 uv run pytest
 uv run python -m imgpipe --seed 1
 ```
-
-## Standalone application
-
-A standalone executable is available for Linux and Windows in the project's releases.
-
-Run the application from a terminal:
-
-```bash
-./imgpipe
-```
-
-The executable uses the same command line options as the Python package.
-
-Original images are never modified.
 
 ## Command line
 
@@ -48,9 +52,9 @@ uv run python -m imgpipe [--preset FILE] [-i DIR] [-o DIR] [--seed N] [--verbose
 
 ## Examples
 
-Process images using a preset file:
+Use another preset file instead of `preset.toml`:
 ```bash
-./imgpipe --preset preset.toml
+./imgpipe --preset portraits.toml
 ```
 
 Specify custom input and output folders:

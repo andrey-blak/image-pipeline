@@ -55,6 +55,8 @@ jobs:
       contents: write
 
     steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
@@ -66,4 +68,4 @@ jobs:
           mv artifacts/imgpipe-linux/imgpipe imgpipe-linux
           mv artifacts/imgpipe-windows/imgpipe.exe imgpipe-windows.exe
           chmod +x imgpipe-linux
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes imgpipe-linux imgpipe-windows.exe
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes imgpipe-linux imgpipe-windows.exe preset.toml

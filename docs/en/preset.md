@@ -257,7 +257,7 @@ input/sub/b.jpg -> output/sub/b.jpg
 ```
 
 - `-i`, `--input` (default: `input_folder` of the preset, else `input`): searched recursively for images.
-- `-o`, `--output` (default: `output_folder` of the preset, else `output`): receives the results with the same relative paths (subfolders are mirrored). Names and formats come from the `[output]` section: by default they are the originals'; with a `format` the extension changes and name clashes get a number. Renaming files by a pattern (date and time with random digits) is not implemented yet. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
+- `-o`, `--output` (default: `output_folder` of the preset, else `output`): receives the results with the same relative paths (subfolders are mirrored). Names and formats come from the `[output]` section: by default they are the originals'; with a `format` the extension changes and name clashes get a number. Files can be renamed by a pattern with the `[rename]` section. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
 - `--seed` (default: `seed` of the preset, else random): makes random values repeatable.
 - `-v`, `--verbose`: adds what was applied to each progress line:
 
