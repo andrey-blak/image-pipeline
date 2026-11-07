@@ -3,7 +3,7 @@ import random
 import sys
 from pathlib import Path
 
-from imgpipe.config import load_steps
+from imgpipe.config import load_config
 from imgpipe.errors import ConfigError
 from imgpipe.pipeline import FileReport, Pipeline
 
@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
         print("No config given; nothing to do.")
         return 0
     try:
-        steps = load_steps(args.config)
+        config = load_config(args.config)
         if not args.input.is_dir():
             raise ConfigError(f"input folder not found: {args.input}")
         on_file = None
@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.dry_run:
             print("Dry run (no changes will be made):", flush=True)
-        result = Pipeline(steps).run(
+        result = Pipeline(config.steps, config.fix_orientation).run(
             args.input, args.output, random.Random(args.seed), on_file, dry_run=args.dry_run
         )
     except ConfigError as e:

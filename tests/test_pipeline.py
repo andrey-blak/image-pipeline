@@ -183,3 +183,80 @@ def test_skipped_file_gets_no_report(make_image, tmp_path):
     result, reports = run_with_reports(pipeline(RESIZE), tmp_path)
     assert [r.source.name for r in reports] == ["a.png"]
     assert [p.name for p, _ in result.skipped] == ["broken.png"]
+
+
+# ---------- EXIF orientation ----------
+
+def exif_orientation_of(path):
+    with Image.open(path) as image:
+        return image.getexif().get(0x0112)
+
+
+def test_tagged_image_is_made_upright_before_the_steps(make_tagged_image, tmp_path):
+    make_tagged_image("in/phone.png", 6, size=(40, 20))  # stored sideways
+    result, reports = run_with_reports(pipeline(RESIZE, SATURATE), tmp_path)
+
+    assert not result.skipped
+    assert list(reports[0].changes) == ["size", "orientation", "saturation"]
+    assert reports[0].changes["size"] == "20x40 -> 5x10"
+    assert reports[0].changes["orientation"] == "EXIF (rotated 90° cw)"
+    with Image.open(tmp_path / "out/phone.png") as out:
+        assert out.size == (5, 10)
+        top, bottom = out.getpixel((2, 1)), out.getpixel((2, 8))
+        assert top[0] > top[2] and bottom[2] > bottom[0]  # red on top, blue below
+    assert exif_orientation_of(tmp_path / "out/phone.png") is None
+
+
+def test_untagged_and_upright_tagged_images_get_no_orientation_entry(make_image, make_tagged_image, tmp_path):
+    make_image("in/a.png", size=(40, 20))
+    make_tagged_image("in/b.png", 1, size=(40, 20))
+    _, reports = run_with_reports(pipeline(RESIZE), tmp_path)
+    assert [list(r.changes) for r in reports] == [["size"], ["size"]]
+
+
+def test_fix_can_be_switched_off(make_tagged_image, tmp_path):
+    make_tagged_image("in/phone.png", 6, size=(40, 20))
+    reports = []
+    pipeline(RESIZE).run(tmp_path / "in", tmp_path / "out", random.Random(1), reports.append)
+    off = Pipeline([create_step(*RESIZE)], fix_orientation=False)
+    off_reports = []
+    off.run(tmp_path / "in", tmp_path / "out2", random.Random(1), off_reports.append)
+
+    assert reports[0].changes["size"] == "20x40 -> 5x10"
+    assert off_reports[0].changes == {"size": "40x20 -> 10x5"}
+    with Image.open(tmp_path / "out2/phone.png") as out:
+        assert out.size == (10, 5)
+
+
+@pytest.mark.parametrize("value, words", [(2, "mirrored horizontally"), (3, "rotated 180°")])
+def test_non_swapping_orientations_are_reported_too(make_tagged_image, tmp_path, value, words):
+    make_tagged_image("in/a.png", value, size=(40, 20))
+    _, reports = run_with_reports(pipeline(RESIZE), tmp_path)
+    assert reports[0].changes == {"size": "40x20 -> 10x5", "orientation": f"EXIF ({words})"}
+
+
+def test_orientation_does_not_leak_between_images(make_image, make_tagged_image, tmp_path):
+    make_tagged_image("in/a.png", 6)
+    make_image("in/b.png", size=(40, 20))
+    _, reports = run_with_reports(pipeline(RESIZE), tmp_path)
+    assert "orientation" in reports[0].changes and "orientation" not in reports[1].changes
+
+
+@pytest.mark.parametrize(
+    "specs",
+    [
+        [RESIZE, SATURATE],
+        [("resize", {"mode": "crop", "width": 10, "height": 6})],
+        [("resize", {"mode": "padding", "size": 12}), SATURATE],
+    ],
+)
+def test_dry_run_reports_equal_real_run_for_tagged_images(make_image, make_tagged_image, tmp_path, specs):
+    make_tagged_image("in/a.png", 6)
+    make_tagged_image("in/sub/b.png", 8, size=(30, 50))
+    make_tagged_image("in/c.png", 3)
+    make_image("in/d.png", size=(40, 20))
+    pl = pipeline(*specs)
+    _, real = run_with_reports(pl, tmp_path)
+    dry = []
+    pl.run(tmp_path / "in", tmp_path / "dry", random.Random(1), dry.append, dry_run=True)
+    assert real and dry == real

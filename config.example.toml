@@ -1,6 +1,11 @@
 # Example pipeline config. Steps run top to bottom, in the order written.
 # Run: uv run python -m imgpipe --config config.example.toml
 
+# Global options. This table may be placed anywhere in the file, e.g. after the steps.
+[options]
+# Make photos upright according to their EXIF orientation tag (default: true).
+# fix_orientation = true
+
 # Scale keeping proportions: the longer side becomes `size` pixels.
 [[steps]]
 name = "resize"

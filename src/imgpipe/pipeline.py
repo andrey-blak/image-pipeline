@@ -31,8 +31,9 @@ def _size_change(before: tuple[int, int], after: tuple[int, int]) -> str:
 
 
 class Pipeline:
-    def __init__(self, steps: list[Step]):
+    def __init__(self, steps: list[Step], fix_orientation: bool = True):
         self.steps = steps
+        self.fix_orientation = fix_orientation
 
     def process(self, image: Image.Image, ctx: Context, dry_run: bool = False) -> Image.Image:
         """Run the steps in order.
@@ -74,7 +75,11 @@ class Pipeline:
             ctx.changes = {}
             ctx.reported_size = None
             try:
-                image, fmt = imageio.load(source)
+                image, fmt, orientation = imageio.load(source)
+                oriented = None
+                if self.fix_orientation:
+                    # Not a step: always first. Also in a dry run, as it can swap width and height.
+                    image, oriented = imageio.fix_orientation(image, orientation)
                 processed = self.process(image, ctx, dry_run)
                 if not dry_run:
                     imageio.save(processed, target, fmt)
@@ -84,7 +89,10 @@ class Pipeline:
                 result.processed.append(target)
                 if on_file is not None:
                     size = ctx.reported_size or processed.size
-                    changes = {"size": _size_change(image.size, size)} | ctx.changes
+                    changes = {"size": _size_change(image.size, size)}
+                    if oriented:
+                        changes["orientation"] = f"EXIF ({oriented})"
+                    changes |= ctx.changes
                     on_file(
                         FileReport(
                             source=source.relative_to(input_dir),

@@ -241,3 +241,54 @@ def test_real_run_has_no_dry_run_header_or_footer(make_image, tmp_path, capsys):
     run_cli(tmp_path, "-v")
     out = capsys.readouterr().out
     assert "Dry run" not in out and "Nothing was written" not in out
+
+
+# ---------- EXIF orientation ----------
+
+def write_config(tmp_path, after=""):
+    """Write the standard config, followed by extra TOML (e.g. an [options] table)."""
+    (tmp_path / "config.toml").write_text(CONFIG + after)
+
+
+def test_verbose_line_shows_the_applied_orientation(make_tagged_image, tmp_path, capsys):
+    make_tagged_image("in/phone.jpg", 6, size=(40, 20))
+    write_config(tmp_path)
+    assert run_cli(tmp_path, "-v") == 0
+
+    line = capsys.readouterr().out.splitlines()[0]
+    assert re.search(r"\| size 20x40 -> 5x10 \| orientation EXIF \(rotated 90° cw\) \| saturation [+-]\d+\.\d%$", line)
+
+
+def test_dry_run_prints_the_same_orientation_line(make_tagged_image, tmp_path, capsys):
+    make_tagged_image("in/phone.jpg", 6, size=(40, 20))
+    write_config(tmp_path)
+    run_cli(tmp_path, "-n", seed="3")
+    dry = capsys.readouterr().out.splitlines()[1]
+    run_cli(tmp_path, "-v", seed="3")
+    real = capsys.readouterr().out.splitlines()[0]
+    assert dry == real and "orientation EXIF (rotated 90° cw)" in dry
+
+
+def test_fix_orientation_false_in_the_config(make_tagged_image, tmp_path, capsys):
+    make_tagged_image("in/phone.jpg", 6, size=(40, 20))
+    write_config(tmp_path, "\n[options]\nfix_orientation = false\n")
+    run_cli(tmp_path, "-v")
+
+    line = capsys.readouterr().out.splitlines()[0]
+    assert "size 40x20 -> 10x5" in line and "| orientation" not in line
+    with Image.open(tmp_path / "out/phone.jpg") as out:
+        assert out.size == (10, 5)
+
+
+def test_non_bool_fix_orientation_is_a_config_error(tmp_path, capsys):
+    write_config(tmp_path, '\n[options]\nfix_orientation = "no"\n')
+    (tmp_path / "in").mkdir()
+    assert run_cli(tmp_path) == 2
+    assert "option 'fix_orientation' must be bool" in capsys.readouterr().err
+
+
+def test_old_top_level_fix_orientation_is_rejected_with_a_hint(tmp_path, capsys):
+    (tmp_path / "config.toml").write_text("fix_orientation = false\n" + CONFIG)
+    (tmp_path / "in").mkdir()
+    assert run_cli(tmp_path) == 2
+    assert "option 'fix_orientation' belongs in the [options] table" in capsys.readouterr().err
