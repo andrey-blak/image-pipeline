@@ -4,8 +4,11 @@
 
 # Global options.
 [options]
-# Make photos upright according to their EXIF orientation tag (default: true).
-fix_orientation = true
+# What to do with the EXIF orientation tag of photos:
+# "apply" (default) - rotate the pixels upright and reset the tag;
+# "keep" - leave the pixels as stored and keep the tag (even if keep_metadata = false);
+# "remove" - leave the pixels as stored and remove the tag.
+exif_orientation = "apply"
 
 # Output options. Control how the results are written.
 [output]

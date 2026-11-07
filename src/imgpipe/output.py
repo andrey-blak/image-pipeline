@@ -94,9 +94,15 @@ def write(
     settings: OutputSettings,
     source_format: str,
     metadata: Metadata,
-    orientation_applied: bool = False,
+    drop_orientation: bool = False,
+    keep_orientation: int | None = None,
 ) -> None:
-    """Write an image as the output settings say."""
+    """Write an image as the output settings say.
+
+    ``drop_orientation`` removes the EXIF orientation tag from carried-over metadata.
+    ``keep_orientation`` is an exception to stripping: that orientation value is written
+    (as the only EXIF tag) even when ``keep_metadata`` is off, if the format can hold EXIF.
+    """
     fmt = settings.format_for(source_format)
     image = _prepare(image, fmt, settings._background)
 
@@ -107,11 +113,15 @@ def write(
         params["icc_profile"] = metadata.icc_profile
     if settings.keep_metadata:
         if "exif" in fmt.metadata and metadata.exif:
-            params["exif"] = _exif_for_output(metadata.exif, orientation_applied)
+            params["exif"] = _exif_for_output(metadata.exif, drop_orientation)
         if "xmp" in fmt.metadata and metadata.xmp:
             params["xmp"] = metadata.xmp
         if "comment" in fmt.metadata and metadata.comment:
             params["comment"] = metadata.comment
+    elif keep_orientation is not None and "exif" in fmt.metadata:
+        exif = Image.Exif()
+        exif[EXIF_ORIENTATION_TAG] = keep_orientation
+        params["exif"] = exif
 
     path.parent.mkdir(parents=True, exist_ok=True)
     # Pillow copies some `info` entries (JPEG comment, PNG ICC profile, transparency) on its
@@ -137,10 +147,10 @@ def _prepare(image: Image.Image, fmt: OutputFormat, background: tuple) -> Image.
     return image
 
 
-def _exif_for_output(data: bytes, orientation_applied: bool) -> Image.Exif:
-    """The source EXIF; without the orientation tag when the pixels were already rotated."""
+def _exif_for_output(data: bytes, drop_orientation: bool) -> Image.Exif:
+    """The source EXIF, without the orientation tag if ``drop_orientation``."""
     exif = Image.Exif()
     exif.load(data)
-    if orientation_applied:
+    if drop_orientation:
         exif.pop(EXIF_ORIENTATION_TAG, None)
     return exif

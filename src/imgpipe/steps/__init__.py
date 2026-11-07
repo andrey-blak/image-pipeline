@@ -36,6 +36,19 @@ class Context:
     skip_pixels: bool = False
     skip_resize: bool = False
     reported_size: tuple[int, int] | None = None
+    # With exif_orientation = "keep": the EXIF orientation value of the current image, whose
+    # pixels are not turned upright. Steps then work on the photo as it is shown (see below).
+    orientation: int | None = None
+
+    @property
+    def swaps_axes(self) -> bool:
+        """The stored image is shown with width and height exchanged (EXIF orientation 5-8)."""
+        return self.orientation in (5, 6, 7, 8)
+
+    @property
+    def mirrored(self) -> bool:
+        """The stored image is shown mirrored (EXIF orientation 2, 4, 5, 7): turns go the other way."""
+        return self.orientation in (2, 4, 5, 7)
 
     def record_size(self, size: tuple[int, int]) -> None:
         self.reported_size = size

@@ -37,4 +37,5 @@ class RandomRotate(Step):
         if quarter_turns(angle) == 0:
             return image  # 0 degrees: nothing to do
         ctx.record("rotation", f"{angle:+.1f}°")
-        return rotate_image(normalize_mode(image), angle, self.corners, self._fill)
+        shown = -angle if ctx.mirrored else angle  # as the photo is shown
+        return rotate_image(normalize_mode(image), shown, self.corners, self._fill)

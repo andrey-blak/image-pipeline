@@ -22,6 +22,12 @@ def find_images(input_dir: Path, exclude: Path | None = None) -> list[Path]:
 
 EXIF_ORIENTATION_TAG = 0x0112
 
+# What to do with the EXIF orientation of a photo (the `exif_orientation` option):
+# apply  - rotate the pixels upright and drop the tag (it would rotate the photo twice)
+# keep   - leave the pixels as stored; the tag stays where metadata is kept
+# remove - leave the pixels as stored and drop the tag
+EXIF_ORIENTATION_MODES = ("apply", "keep", "remove")
+
 # EXIF orientation value -> (transpose that makes the stored image upright, description).
 # Value 1 (already upright) and anything else need no change. Same operations as
 # `PIL.ImageOps.exif_transpose`.
@@ -34,6 +40,9 @@ ORIENTATIONS = {
     7: (Image.Transpose.TRANSVERSE, "anti-transposed"),
     8: (Image.Transpose.ROTATE_90, "rotated 90° ccw"),
 }
+
+
+ORIENTATION_VALUES = frozenset({1, *ORIENTATIONS})
 
 
 class Metadata(NamedTuple):

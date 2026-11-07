@@ -3,12 +3,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from imgpipe.errors import PresetError
+from imgpipe.imageio import EXIF_ORIENTATION_MODES
 from imgpipe.naming import RenameSettings
 from imgpipe.output import OutputSettings
 from imgpipe.steps import Step, create_step
 
 # Sections of global settings: name -> option name -> expected type.
-OPTIONS = {"fix_orientation": bool}
+OPTIONS = {"exif_orientation": str}
 OUTPUT = {"format": str, "quality": int, "background": str, "keep_metadata": bool}
 RENAME = {"pattern": str, "counter_start": int}
 SECTIONS = {"options": OPTIONS, "output": OUTPUT, "rename": RENAME}
@@ -17,7 +18,7 @@ SECTIONS = {"options": OPTIONS, "output": OUTPUT, "rename": RENAME}
 @dataclass
 class Preset:
     steps: list[Step]
-    fix_orientation: bool = True
+    exif_orientation: str = "apply"
     output: OutputSettings = field(default_factory=OutputSettings)
     rename: RenameSettings | None = None
 
@@ -48,14 +49,14 @@ def _changes_files(
     """Whether the global settings alone change the files, so that no step is needed.
 
     Only settings that were written count: ``keep_metadata`` is false by default, and
-    ``format = "keep"``, ``keep_metadata = true`` or ``fix_orientation = false`` change nothing.
+    ``format = "keep"``, ``keep_metadata = true`` or ``exif_orientation = "keep"`` change nothing.
     """
     return (
         rename is not None
         or output.format != "keep"
         or "quality" in output_values
         or output_values.get("keep_metadata") is False
-        or options.get("fix_orientation") is True
+        or options.get("exif_orientation") in ("apply", "remove")
     )
 
 
@@ -78,6 +79,12 @@ def load_preset(path: Path) -> Preset:
         raise PresetError(f"{path}: unknown top-level key(s): {', '.join(unknown)}")
 
     options = _load_section(path, "options", data.get("options", {}), OPTIONS)
+    mode = options.get("exif_orientation")
+    if mode is not None and mode not in EXIF_ORIENTATION_MODES:
+        raise PresetError(
+            f"{path}: [options]: unknown exif_orientation '{mode}'; "
+            f"known values: {', '.join(EXIF_ORIENTATION_MODES)}"
+        )
     output_values = _load_section(path, "output", data.get("output", {}), OUTPUT)
     try:
         output = OutputSettings(**output_values)

@@ -49,13 +49,13 @@ class Pipeline:
     def __init__(
         self,
         steps: list[Step],
-        fix_orientation: bool = True,
+        exif_orientation: str = "apply",
         output_settings: OutputSettings | None = None,
         rename: RenameSettings | None = None,
         clock: Callable[[], datetime] = datetime.now,
     ):
         self.steps = steps
-        self.fix_orientation = fix_orientation
+        self.exif_orientation = exif_orientation
         self.output = output_settings or OutputSettings()
         self.rename = rename
         self.clock = clock
@@ -103,13 +103,17 @@ class Pipeline:
             relative = source.relative_to(input_dir)
             ctx.changes = {}
             ctx.reported_size = None
+            ctx.orientation = None
             try:
                 loaded = imageio.load(source)
                 image = loaded.image
                 oriented = None
-                if self.fix_orientation:
+                if self.exif_orientation == "apply":
                     # Not a step: always first. Also in a dry run, as it can swap width and height.
                     image, oriented = imageio.fix_orientation(image, loaded.orientation)
+                keep_orientation = None
+                if self.exif_orientation == "keep" and loaded.orientation in imageio.ORIENTATION_VALUES:
+                    keep_orientation = ctx.orientation = loaded.orientation
                 processed = self.process(image, ctx, dry_run)
                 wanted = self.output.target_path(relative, loaded.format)
                 if self.rename:
@@ -121,7 +125,9 @@ class Pipeline:
                 if not dry_run:
                     output.write(
                         processed, output_dir / final, self.output, loaded.format,
-                        loaded.metadata, orientation_applied=bool(oriented),
+                        loaded.metadata,
+                        drop_orientation=bool(oriented) or self.exif_orientation == "remove",
+                        keep_orientation=keep_orientation,
                     )
             except Exception as e:  # one bad file must not stop the batch
                 result.skipped.append((source, f"{type(e).__name__}: {e}"))

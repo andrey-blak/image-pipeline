@@ -32,4 +32,5 @@ class Rotate(Step):
         if quarter_turns(self.angle) == 0:
             return image  # a full turn: nothing to do
         ctx.record("rotation", f"{self.angle:+g}°")
-        return rotate_image(normalize_mode(image), self.angle, self.corners, self._fill)
+        angle = -self.angle if ctx.mirrored else self.angle  # as the photo is shown
+        return rotate_image(normalize_mode(image), angle, self.corners, self._fill)

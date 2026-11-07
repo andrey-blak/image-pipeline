@@ -27,10 +27,11 @@ def photo(size=(24, 16), mode="RGB", seed=1):
     return image
 
 
-def write(image, path, source_format="PNG", metadata=None, orientation_applied=False, **settings):
+def write(image, path, source_format="PNG", metadata=None, drop_orientation=False,
+          keep_orientation=None, **settings):
     output.write(
         image, path, OutputSettings(**settings), source_format,
-        metadata or imageio.Metadata(), orientation_applied,
+        metadata or imageio.Metadata(), drop_orientation, keep_orientation,
     )
     return path
 
@@ -281,10 +282,10 @@ def test_keep_metadata_carries_exif_xmp_comment_and_icc(tmp_path):
     assert info["icc_profile"] == SRGB
 
 
-def test_orientation_tag_is_dropped_when_the_pixels_were_rotated(tmp_path):
+def test_orientation_tag_is_dropped_on_request(tmp_path):
     loaded = imageio.load(rich_jpeg(tmp_path))
     path = write(loaded.image, tmp_path / "out.jpg", source_format="JPEG", metadata=loaded.metadata,
-                 keep_metadata=True, orientation_applied=True)
+                 keep_metadata=True, drop_orientation=True)
     _, _, _, exif = reopen(path)
     assert 0x0112 not in exif and exif[0x010F] == "Camera Co"
 
@@ -357,7 +358,7 @@ def test_a_stale_info_entry_does_not_leak(tmp_path):
 # ---------- name clashes ----------
 
 def build(settings=None, steps=None):
-    return Pipeline([create_step(*s) for s in (steps or [("resize", {"size": 10})])], True, settings)
+    return Pipeline([create_step(*s) for s in (steps or [("resize", {"size": 10})])], "apply", settings)
 
 
 def make_files(tmp_path, names, size=(20, 10)):
@@ -452,7 +453,51 @@ def test_exif_orientation_flows_to_the_output(tmp_path):
     with Image.open(tmp_path / "out/phone.jpg") as image:
         assert image.size == (5, 10) and 0x0112 not in image.getexif()  # rotated: tag removed
         assert image.getexif()[0x010F] == "Camera Co"
-    off = Pipeline([create_step("resize", {"size": 10})], False, OutputSettings(keep_metadata=True))
-    off.run(tmp_path / "in", tmp_path / "out2", random.Random(1))
+    kept = Pipeline([create_step("resize", {"size": 10})], "keep", OutputSettings(keep_metadata=True))
+    kept.run(tmp_path / "in", tmp_path / "out2", random.Random(1))
     with Image.open(tmp_path / "out2/phone.jpg") as image:
         assert image.size == (10, 5) and image.getexif()[0x0112] == 6  # not rotated: tag kept
+    removed = Pipeline([create_step("resize", {"size": 10})], "remove", OutputSettings(keep_metadata=True))
+    removed.run(tmp_path / "in", tmp_path / "out3", random.Random(1))
+    with Image.open(tmp_path / "out3/phone.jpg") as image:
+        assert image.size == (10, 5) and 0x0112 not in image.getexif()  # not rotated: tag dropped
+        assert image.getexif()[0x010F] == "Camera Co"
+
+
+# ---------- orientation as an exception to metadata stripping ----------
+
+@pytest.mark.parametrize("fmt, source", [("jpg", "JPEG"), ("png", "PNG"), ("webp", "WEBP"), ("avif", "AVIF")])
+def test_kept_orientation_is_written_alone_when_metadata_is_stripped(tmp_path, fmt, source):
+    loaded = imageio.load(rich_jpeg(tmp_path))
+    path = write(loaded.image, tmp_path / f"out.{fmt}", source_format=source, metadata=loaded.metadata,
+                 format=fmt, keep_orientation=6)
+    _, _, info, exif = reopen(path)
+    assert exif[0x0112] == 6
+    assert set(exif.keys()) == {0x0112}  # no camera, no GPS
+    assert not exif.get_ifd(0x8825)
+    assert "comment" not in info and "xmp" not in info
+
+
+@pytest.mark.parametrize("fmt", ["gif", "bmp", "tiff"])
+def test_kept_orientation_is_skipped_by_formats_without_exif(tmp_path, fmt):
+    path = write(photo((8, 8), mode="RGB"), tmp_path / f"out.{fmt}", format=fmt, keep_orientation=6)
+    assert 0x0112 not in reopen(path)[3]
+
+
+def test_no_orientation_tag_without_keep_orientation(tmp_path):
+    loaded = imageio.load(rich_jpeg(tmp_path))
+    path = write(loaded.image, tmp_path / "out.jpg", source_format="JPEG", metadata=loaded.metadata)
+    assert 0x0112 not in reopen(path)[3]
+
+
+def test_keep_mode_writes_only_the_orientation_tag_with_default_metadata_stripping(tmp_path):
+    src = tmp_path / "in/phone.jpg"
+    src.parent.mkdir()
+    photo((40, 20)).save(src, exif=exif_with(6))
+    for mode, expected in [("keep", {0x0112}), ("remove", set()), ("apply", set())]:
+        out = tmp_path / mode
+        Pipeline([create_step("resize", {"size": 10})], mode, OutputSettings()).run(
+            tmp_path / "in", out, random.Random(1))
+        with Image.open(out / "phone.jpg") as image:
+            assert set(image.getexif().keys()) == expected
+            assert image.getexif().get(0x0112) == (6 if mode == "keep" else None)

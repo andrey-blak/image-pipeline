@@ -66,8 +66,17 @@ class Resize(Step):
     depends_on_pixels = False
     depends_on_size = True
 
-    def _output_size(self, size: tuple[int, int]) -> tuple[int, int]:
-        """The size this step produces for an input of ``size``."""
+    def _output_size(self, size: tuple[int, int], swap: bool = False) -> tuple[int, int]:
+        """The size this step produces for an input of ``size``.
+
+        With ``swap`` the stored image is shown with its axes exchanged (EXIF orientation
+        kept): ``width`` and ``height`` then refer to the shown photo.
+        """
+        if swap:
+            return self._shown_output_size(size[::-1])[::-1]
+        return self._shown_output_size(size)
+
+    def _shown_output_size(self, size: tuple[int, int]) -> tuple[int, int]:
         w, h = size
         if self.mode == "longest_side":
             longest = max(w, h)
@@ -93,7 +102,8 @@ class Resize(Step):
         return self.width, self.height
 
     def apply(self, image: Image.Image, ctx: Context) -> Image.Image:
-        target = self._output_size(image.size)
+        swap = ctx.swaps_axes
+        target = self._output_size(image.size, swap)
         if target == image.size:
             return image
         if ctx.skip_pixels:
@@ -105,17 +115,21 @@ class Resize(Step):
         if self.mode in ("longest_side", "scale"):
             return normalize_mode(image).resize(target, Image.Resampling.LANCZOS)
         if self.mode == "padding":
-            return self._padding(image)
-        return self._crop(image)
+            return self._padding(image, swap)
+        return self._crop(image, swap)
 
-    def _padding(self, image: Image.Image) -> Image.Image:
-        target = (self.width, self.height)
+    def _target(self, swap: bool) -> tuple[int, int]:
+        return (self.height, self.width) if swap else (self.width, self.height)
+
+    def _padding(self, image: Image.Image, swap: bool = False) -> Image.Image:
+        target = self._target(swap)
+        width, height = target
         image = normalize_mode(image)
-        scale = min(self.width / image.width, self.height / image.height)
+        scale = min(width / image.width, height / image.height)
         if scale != 1 and (scale < 1 or self.upscale):
             new_size = (
-                min(self.width, max(1, round(image.width * scale))),
-                min(self.height, max(1, round(image.height * scale))),
+                min(width, max(1, round(image.width * scale))),
+                min(height, max(1, round(image.height * scale))),
             )
             image = image.resize(new_size, Image.Resampling.LANCZOS)
         # Paste unblended on a transparent layer first so semi-transparent pixels keep
@@ -123,21 +137,22 @@ class Resize(Step):
         layer = Image.new("RGBA", target, TRANSPARENT)
         layer.paste(
             image.convert("RGBA"),
-            ((self.width - image.width) // 2, (self.height - image.height) // 2),
+            ((width - image.width) // 2, (height - image.height) // 2),
         )
         result = Image.alpha_composite(Image.new("RGBA", target, self._fill_color), layer)
         if self._fill_color[3] < 255 or image.mode in ("RGBA", "LA"):
             return result
         return result.convert("RGB")
 
-    def _crop(self, image: Image.Image) -> Image.Image:
-        scale = max(self.width / image.width, self.height / image.height)
+    def _crop(self, image: Image.Image, swap: bool = False) -> Image.Image:
+        width, height = self._target(swap)
+        scale = max(width / image.width, height / image.height)
         if scale != 1:
             new_size = (
-                max(self.width, round(image.width * scale)),
-                max(self.height, round(image.height * scale)),
+                max(width, round(image.width * scale)),
+                max(height, round(image.height * scale)),
             )
             image = normalize_mode(image).resize(new_size, Image.Resampling.LANCZOS)
-        left = (image.width - self.width) // 2
-        top = (image.height - self.height) // 2
-        return image.crop((left, top, left + self.width, top + self.height))
+        left = (image.width - width) // 2
+        top = (image.height - height) // 2
+        return image.crop((left, top, left + width, top + height))

@@ -4,7 +4,7 @@ Batch image transformation tool. Reads images from an input folder, applies a co
 
 Python package: `imgpipe`. The pipeline preset is a TOML file. Dependency management: uv.
 
-**Status.** Available steps: `trim_borders`, `rotate`, `rnd_rotate`, `resize`, `auto_brightness`, `rnd_saturation`. Photos with an EXIF orientation tag are made upright first (`fix_orientation`, on by default). Output (`[output]` section): keep the original format or convert to png, jpg, webp, avif, gif, tiff or bmp, with quality, a background for flattened transparency, and metadata stripping (on by default). Result files can be renamed from a pattern (`[rename]` section): original name, date and time, counter, random digits and letters, UUID.
+**Status.** Available steps: `trim_borders`, `rotate`, `rnd_rotate`, `resize`, `auto_brightness`, `rnd_saturation`. Photos with an EXIF orientation tag are made upright first (`exif_orientation`: `"apply"` by default, or `"keep"` / `"remove"`). Output (`[output]` section): keep the original format or convert to png, jpg, webp, avif, gif, tiff or bmp, with quality, a background for flattened transparency, and metadata stripping (on by default). Result files can be renamed from a pattern (`[rename]` section): original name, date and time, counter, random digits and letters, UUID.
 
 ## Python package quick start
 

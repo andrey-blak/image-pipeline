@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.dry_run:
             print("Dry run (no changes will be made):", flush=True)
-        pipeline = Pipeline(preset.steps, preset.fix_orientation, preset.output, preset.rename)
+        pipeline = Pipeline(preset.steps, preset.exif_orientation, preset.output, preset.rename)
         result = pipeline.run(
             args.input, args.output, random.Random(args.seed), on_file, dry_run=args.dry_run
         )

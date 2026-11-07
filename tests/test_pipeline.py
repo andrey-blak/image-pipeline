@@ -217,11 +217,11 @@ def test_untagged_and_upright_tagged_images_get_no_orientation_entry(make_image,
     assert [list(r.changes) for r in reports] == [["size"], ["size"]]
 
 
-def test_fix_can_be_switched_off(make_tagged_image, tmp_path):
+def test_apply_can_be_switched_off_with_keep(make_tagged_image, tmp_path):
     make_tagged_image("in/phone.png", 6, size=(40, 20))
     reports = []
     pipeline(RESIZE).run(tmp_path / "in", tmp_path / "out", random.Random(1), reports.append)
-    off = Pipeline([create_step(*RESIZE)], fix_orientation=False)
+    off = Pipeline([create_step(*RESIZE)], exif_orientation="keep")
     off_reports = []
     off.run(tmp_path / "in", tmp_path / "out2", random.Random(1), off_reports.append)
 

@@ -88,63 +88,74 @@ def test_resize_invalid_mode_options_reported_with_step_name(tmp_path):
 # ---------- [options] section ----------
 
 STEP = '[[steps]]\nname = "resize"\nsize = 10\n'
-OPTIONS_OFF = "[options]\nfix_orientation = false\n"
+OPTIONS_OFF = '[options]\nexif_orientation = "keep"\n'
 
 
-def test_fix_orientation_defaults_to_true(tmp_path):
-    assert load_preset(write(tmp_path, STEP)).fix_orientation is True
+def test_exif_orientation_defaults_to_apply(tmp_path):
+    assert load_preset(write(tmp_path, STEP)).exif_orientation == "apply"
 
 
-@pytest.mark.parametrize("value", ["true", "false"])
-def test_fix_orientation_can_be_set(tmp_path, value):
-    preset = load_preset(write(tmp_path, f"{STEP}\n[options]\nfix_orientation = {value}\n"))
-    assert preset.fix_orientation is (value == "true")
+@pytest.mark.parametrize("value", ["apply", "keep", "remove"])
+def test_exif_orientation_can_be_set(tmp_path, value):
+    preset = load_preset(write(tmp_path, f'{STEP}\n[options]\nexif_orientation = "{value}"\n'))
+    assert preset.exif_orientation == value
     assert [s.name for s in preset.steps] == ["resize"]
 
 
 def test_options_section_may_come_before_or_after_the_steps(tmp_path):
     before = load_preset(write(tmp_path, f"{OPTIONS_OFF}\n{STEP}"))
     after = load_preset(write(tmp_path, f"{STEP}\n{OPTIONS_OFF}"))
-    assert before.fix_orientation is False and after.fix_orientation is False
+    assert before.exif_orientation == "keep" and after.exif_orientation == "keep"
     assert [s.name for s in before.steps] == [s.name for s in after.steps] == ["resize"]
 
 
 def test_options_section_between_steps(tmp_path):
     text = f'{STEP}\n{OPTIONS_OFF}\n[[steps]]\nname = "rnd_saturation"\nmin_percent = 1\nmax_percent = 2\n'
     preset = load_preset(write(tmp_path, text))
-    assert preset.fix_orientation is False
+    assert preset.exif_orientation == "keep"
     assert [s.name for s in preset.steps] == ["resize", "rnd_saturation"]
 
 
 def test_empty_options_section_is_fine(tmp_path):
-    assert load_preset(write(tmp_path, f"[options]\n{STEP}")).fix_orientation is True
+    assert load_preset(write(tmp_path, f"[options]\n{STEP}")).exif_orientation == "apply"
 
 
-@pytest.mark.parametrize("value", ['"yes"', "1", "0.5"])
-def test_fix_orientation_must_be_a_bool(tmp_path, value):
-    with pytest.raises(PresetError, match="option 'fix_orientation' must be bool"):
-        load_preset(write(tmp_path, f"{STEP}\n[options]\nfix_orientation = {value}\n"))
+@pytest.mark.parametrize("value", ["true", "1", "0.5"])
+def test_exif_orientation_must_be_text(tmp_path, value):
+    with pytest.raises(PresetError, match="option 'exif_orientation' must be str"):
+        load_preset(write(tmp_path, f"{STEP}\n[options]\nexif_orientation = {value}\n"))
+
+
+@pytest.mark.parametrize("value", ['"yes"', '"Apply"', '""'])
+def test_exif_orientation_must_be_a_known_value(tmp_path, value):
+    with pytest.raises(PresetError, match="unknown exif_orientation .*known values: apply, keep, remove"):
+        load_preset(write(tmp_path, f"{STEP}\n[options]\nexif_orientation = {value}\n"))
+
+
+def test_the_old_fix_orientation_option_is_unknown(tmp_path):
+    with pytest.raises(PresetError, match=r"unknown option\(s\) fix_orientation in \[options\]"):
+        load_preset(write(tmp_path, f"{STEP}\n[options]\nfix_orientation = false\n"))
 
 
 def test_unknown_option_lists_the_known_ones(tmp_path):
-    with pytest.raises(PresetError, match=r"unknown option\(s\) fix_orient in \[options\]; known options: fix_orientation"):
+    with pytest.raises(PresetError, match=r"unknown option\(s\) fix_orient in \[options\]; known options: exif_orientation"):
         load_preset(write(tmp_path, f"{STEP}\n[options]\nfix_orient = true\n"))
 
 
-@pytest.mark.parametrize("text", ["options = 1\n", "options = [1]\n", '[[options]]\nfix_orientation = true\n'])
+@pytest.mark.parametrize("text", ["options = 1\n", "options = [1]\n", '[[options]]\nexif_orientation = "apply"\n'])
 def test_options_must_be_a_section(tmp_path, text):
     with pytest.raises(PresetError, match=r"\[options\] must be a section"):
         load_preset(write(tmp_path, f"{STEP}\n{text}" if text.startswith("[[") else f"{text}\n{STEP}"))
 
 
 def test_old_top_level_form_gets_a_hint(tmp_path):
-    with pytest.raises(PresetError, match=r"option 'fix_orientation' belongs in the \[options\] section"):
-        load_preset(write(tmp_path, f"fix_orientation = true\n{STEP}"))
+    with pytest.raises(PresetError, match=r"option 'exif_orientation' belongs in the \[options\] section"):
+        load_preset(write(tmp_path, f'exif_orientation = "apply"\n{STEP}'))
 
 
 def test_bare_key_after_a_step_belongs_to_that_step(tmp_path):
-    with pytest.raises(PresetError, match="step 'resize': unknown option.*fix_orientation"):
-        load_preset(write(tmp_path, f"{STEP}fix_orientation = false\n"))
+    with pytest.raises(PresetError, match="step 'resize': unknown option.*exif_orientation"):
+        load_preset(write(tmp_path, f'{STEP}exif_orientation = "keep"\n'))
 
 
 def test_other_top_level_keys_still_rejected(tmp_path):
@@ -180,7 +191,7 @@ def test_output_section_may_come_before_or_after_the_steps(tmp_path):
 
 def test_output_and_options_tables_are_independent(tmp_path):
     preset = load_preset(write(tmp_path, f'{STEP}\n[output]\nformat = "png"\n\n{OPTIONS_OFF}'))
-    assert preset.output.format == "png" and preset.fix_orientation is False
+    assert preset.output.format == "png" and preset.exif_orientation == "keep"
 
 
 def test_unknown_output_option_lists_the_known_ones(tmp_path):
@@ -237,7 +248,8 @@ CHANGES_FILES = [
     '[output]\nformat = "jpeg"',
     '[output]\nquality = 80',
     '[output]\nkeep_metadata = false',
-    '[options]\nfix_orientation = true',
+    '[options]\nexif_orientation = "apply"',
+    '[options]\nexif_orientation = "remove"',
     '[rename]\npattern = "N"',
 ]
 CHANGES_NOTHING = [
@@ -247,7 +259,7 @@ CHANGES_NOTHING = [
     '[output]\nformat = "keep"',
     "[output]\nkeep_metadata = true",
     '[output]\nbackground = "red"',
-    "[options]\nfix_orientation = false",
+    '[options]\nexif_orientation = "keep"',
 ]
 
 

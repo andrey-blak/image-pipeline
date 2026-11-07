@@ -269,9 +269,9 @@ def test_dry_run_prints_the_same_orientation_line(make_tagged_image, tmp_path, c
     assert dry == real and "orientation EXIF (rotated 90° cw)" in dry
 
 
-def test_fix_orientation_false_in_the_preset(make_tagged_image, tmp_path, capsys):
+def test_exif_orientation_keep_in_the_preset(make_tagged_image, tmp_path, capsys):
     make_tagged_image("in/phone.jpg", 6, size=(40, 20))
-    write_preset(tmp_path, "\n[options]\nfix_orientation = false\n")
+    write_preset(tmp_path, "\n[options]\nexif_orientation = \"keep\"\n")
     run_cli(tmp_path, "-v")
 
     line = capsys.readouterr().out.splitlines()[0]
@@ -280,18 +280,18 @@ def test_fix_orientation_false_in_the_preset(make_tagged_image, tmp_path, capsys
         assert out.size == (10, 5)
 
 
-def test_non_bool_fix_orientation_is_a_preset_error(tmp_path, capsys):
-    write_preset(tmp_path, '\n[options]\nfix_orientation = "no"\n')
+def test_unknown_exif_orientation_is_a_preset_error(tmp_path, capsys):
+    write_preset(tmp_path, '\n[options]\nexif_orientation = "no"\n')
     (tmp_path / "in").mkdir()
     assert run_cli(tmp_path) == 2
-    assert "option 'fix_orientation' must be bool" in capsys.readouterr().err
+    assert "unknown exif_orientation 'no'" in capsys.readouterr().err
 
 
-def test_old_top_level_fix_orientation_is_rejected_with_a_hint(tmp_path, capsys):
-    (tmp_path / "preset.toml").write_text("fix_orientation = false\n" + PRESET)
+def test_top_level_exif_orientation_is_rejected_with_a_hint(tmp_path, capsys):
+    (tmp_path / "preset.toml").write_text('exif_orientation = "keep"\n' + PRESET)
     (tmp_path / "in").mkdir()
     assert run_cli(tmp_path) == 2
-    assert "option 'fix_orientation' belongs in the [options] section" in capsys.readouterr().err
+    assert "option 'exif_orientation' belongs in the [options] section" in capsys.readouterr().err
 
 
 # ---------- trim_borders ----------

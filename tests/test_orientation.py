@@ -1,7 +1,14 @@
+import random
+
 import pytest
 from PIL import Image, ImageOps
 
 from imgpipe import imageio
+from imgpipe.pipeline import Pipeline
+from imgpipe.steps import Context, create_step
+from imgpipe.steps.resize import Resize
+from imgpipe.steps.rnd_rotate import RandomRotate
+from imgpipe.steps.rotate import Rotate
 
 T = Image.Transpose
 # Applying this to an upright image gives the way it is stored for each EXIF value.
@@ -91,3 +98,96 @@ def test_damaged_exif_does_not_make_the_image_unreadable(tmp_path):
     Image.new("RGB", (8, 4)).save(path, exif=b"Exif\x00\x00not really exif data")
     image, fmt, orientation, _ = imageio.load(path)
     assert image.size == (8, 4) and fmt == "JPEG" and orientation is None
+
+
+# ---------- steps see the photo as shown when the orientation is kept ----------
+
+def kept(orientation):
+    return Context(rng=random.Random(1), orientation=orientation)
+
+
+@pytest.mark.parametrize("value, swaps, mirrored", [
+    (None, False, False), (1, False, False), (2, False, True), (3, False, False), (4, False, True),
+    (5, True, True), (6, True, False), (7, True, True), (8, True, False),
+])
+def test_context_knows_how_the_stored_image_is_shown(value, swaps, mirrored):
+    ctx = kept(value)
+    assert (ctx.swaps_axes, ctx.mirrored) == (swaps, mirrored)
+
+
+@pytest.mark.parametrize("value, expected", [(None, (10, 5)), (3, (10, 5)), (6, (20, 10)), (8, (20, 10))])
+def test_resize_width_refers_to_the_shown_photo(value, expected):
+    # stored 40x20; the swapping values show it as 20x40, and width 10 means the shown width
+    result = Resize(mode="scale", width=10).apply(Image.new("RGB", (40, 20)), kept(value))
+    assert result.size == expected
+
+
+def test_resize_height_refers_to_the_shown_photo():
+    result = Resize(mode="scale", height=10).apply(Image.new("RGB", (40, 20)), kept(6))
+    assert result.size == (10, 5)  # shown 5x10
+
+
+@pytest.mark.parametrize("mode", ["padding", "crop"])
+def test_fixed_size_canvas_is_in_the_shown_frame(mode):
+    result = Resize(mode=mode, width=100, height=60).apply(Image.new("RGB", (40, 20)), kept(6))
+    assert result.size == (60, 100)  # shown as 100x60
+    plain = Resize(mode=mode, width=100, height=60).apply(Image.new("RGB", (40, 20)), kept(None))
+    assert plain.size == (100, 60)
+
+
+def test_resize_size_report_is_the_same_in_a_dry_run():
+    step = Resize(mode="scale", width=10)
+    ctx = kept(6)
+    ctx.skip_pixels = ctx.skip_resize = True
+    step.apply(Image.new("RGB", (40, 20)), ctx)
+    assert ctx.reported_size == (20, 10)
+
+
+def bands_image():
+    image = Image.new("RGB", (30, 20), (255, 0, 0))
+    image.paste((0, 0, 255), (15, 0, 30, 20))
+    return image
+
+
+@pytest.mark.parametrize("value", [2, 4, 5, 7])
+def test_rotate_turns_the_shown_photo_the_same_way_for_mirrored_tags(value):
+    plain = Rotate(angle=90).apply(bands_image(), kept(None))
+    mirrored = Rotate(angle=90).apply(bands_image(), kept(value))
+    assert mirrored.tobytes() == Rotate(angle=-90).apply(bands_image(), kept(None)).tobytes()
+    assert mirrored.tobytes() != plain.tobytes()
+
+
+@pytest.mark.parametrize("value", [3, 6, 8])
+def test_rotate_is_unchanged_for_turned_tags(value):
+    plain = Rotate(angle=90).apply(bands_image(), kept(None))
+    assert Rotate(angle=90).apply(bands_image(), kept(value)).tobytes() == plain.tobytes()
+
+
+def test_random_rotation_goes_the_other_way_for_mirrored_tags():
+    step = RandomRotate(min_angle=15, max_angle=15)
+    plain_ctx, mirrored_ctx = kept(None), kept(2)
+    plain_ctx.rng, mirrored_ctx.rng = random.Random(7), random.Random(7)
+    plain = step.apply(bands_image(), plain_ctx)
+    mirrored = step.apply(bands_image(), mirrored_ctx)
+    assert plain_ctx.changes == mirrored_ctx.changes  # the reported angle is the shown one
+    angle = float(plain_ctx.changes["rotation"].rstrip("°"))
+    assert plain.tobytes() == Rotate(angle=angle).apply(bands_image(), kept(None)).tobytes()
+    assert mirrored.tobytes() == Rotate(angle=-angle).apply(bands_image(), kept(None)).tobytes()
+
+
+def test_keep_mode_end_to_end(make_tagged_image, tmp_path):
+    make_tagged_image("in/phone.jpg", 6, size=(40, 20))
+    pipeline = Pipeline([create_step("resize", {"mode": "scale", "width": 10})], "keep")
+    pipeline.run(tmp_path / "in", tmp_path / "out", random.Random(1))
+    with Image.open(tmp_path / "out/phone.jpg") as out:
+        assert out.size == (20, 10) and out.getexif()[0x0112] == 6  # shown as 10x20
+
+
+@pytest.mark.parametrize("value", [1, 3, 6, 8])
+def test_keep_mode_dry_run_matches_the_real_run(make_tagged_image, tmp_path, value):
+    make_tagged_image("in/phone.jpg", value, size=(40, 20))
+    pipeline = Pipeline([create_step("resize", {"mode": "padding", "width": 30, "height": 20})], "keep")
+    dry, real = [], []
+    pipeline.run(tmp_path / "in", tmp_path / "o1", random.Random(1), dry.append, dry_run=True)
+    pipeline.run(tmp_path / "in", tmp_path / "o2", random.Random(1), real.append)
+    assert dry == real

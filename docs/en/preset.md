@@ -6,13 +6,13 @@ A TOML file passed with `--preset`. Without `--preset` the tool does nothing.
 
 The file holds an ordered list of steps (each one is a `[[steps]]` entry). Each step has a `name` and its own options. Steps run in the order written; every step receives the result of the previous one. Unknown step names, unknown or missing options, and values of the wrong type are rejected before any image is processed.
 
-At least one step is required, unless the global sections alone change the files. Then the steps may be left out (or `steps = []`) and the images are only renamed, converted, re-saved or made upright. That is the case when the file has any of:
+At least one step is required, unless the global sections alone change the files. Then the steps may be left out (or `steps = []`) and the images are only renamed, converted, re-saved or have their EXIF orientation applied. That is the case when the file has any of:
 
 - a `[rename]` section;
 - `format` in `[output]` other than `"keep"`;
 - `quality` in `[output]`;
 - `keep_metadata = false` written in `[output]` (it is the default, so it counts only when written; `keep_metadata = true` does not count);
-- `fix_orientation = true` written in `[options]` (`false` does not count).
+- `exif_orientation = "apply"` or `"remove"` written in `[options]`.
 
 `background` alone counts for nothing. Without steps and without one of these the file is rejected.
 
@@ -28,14 +28,20 @@ name = "resize"
 size = 300
 
 [options]
-fix_orientation = false
+exif_orientation = "keep"
 ```
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `fix_orientation` | bool | `true` | Make photos upright according to their EXIF orientation tag (phone photos are often stored sideways with a tag that tells viewers to rotate them). Done when an image is read, before any step; it is not a step. |
+| `exif_orientation` | string | `"apply"` | What to do with the EXIF orientation tag of photos (phone photos are often stored sideways with a tag that tells viewers to rotate them): `"apply"`, `"keep"` or `"remove"`. Done when an image is read, before any step. |
 
-With `fix_orientation` on, an image with an orientation tag is rotated or mirrored so it is upright, and all steps and the `size` in `--verbose` output refer to the upright image. The written file has no orientation tag, so it is not rotated twice. Images without a tag, or with the tag "upright" (value 1), are left alone, as are unknown or damaged tag values. With `fix_orientation = false` the image is processed as stored. A dry run (`--dry-run`) applies the fix too, because it can swap width and height.
+The values:
+
+- `"apply"` (default): an image with an orientation tag is rotated or mirrored so it is upright, and the tag is reset (removed from the written file, so the photo is not rotated twice). All steps and the `size` in `--verbose` output refer to the upright image.
+- `"keep"`: the pixels stay as stored and the tag is written to the output as it is. This is an exception to the metadata stripping: the orientation tag is written even with `keep_metadata = false` (then it is the only EXIF tag written). Only formats that can hold EXIF can carry it (`"png"`, `"jpg"`, `"webp"`, `"avif"`); `"gif"`, `"bmp"` and `"tiff"` lose it. The steps still work on the photo as it is shown: `width` and `height` of `resize` are those of the shown photo (the stored pixels are exchanged for the tags 5-8), and `rotate`/`rnd_rotate` turn the shown photo in the stated direction (for the mirrored tags 2, 4, 5, 7 the stored pixels are turned the other way). The tag therefore stays correct. The sizes in `--verbose` output are those of the stored pixels.
+- `"remove"`: the pixels stay as stored and the tag is removed. Viewers show the photo as stored, never rotated.
+
+Images without a tag, or with the tag "upright" (value 1), are left alone, as are unknown or damaged tag values. A dry run (`--dry-run`) follows the same rule, because `"apply"` can swap width and height.
 
 ## `[output]` section
 
@@ -78,7 +84,7 @@ keep_metadata = false  # default
 By default (`keep_metadata = false`) everything personal is dropped: EXIF (camera, date, GPS position, ...), XMP, comments and text chunks. The **ICC color profile is always kept** where the format can store it (`png`, `jpg`, `webp`, `avif`, `tiff`), because it is color data, not personal data, and removing it would make images with a wide-gamut profile look different.
 
 With `keep_metadata = true`, the EXIF, XMP and comment of the original are carried over to the formats that can hold them (see the table). Notes:
-- The EXIF orientation tag is removed when the pixels were rotated (`fix_orientation`), and kept when they were not (`fix_orientation = false`).
+- The EXIF orientation tag is removed when the pixels were rotated or when `exif_orientation = "remove"`, and kept with `exif_orientation = "keep"` (even with `keep_metadata = false`, see `[options]`).
 - Tags that describe the original image, such as its width and height, are not updated after resizing or trimming.
 - DPI information is not carried over.
 
@@ -248,8 +254,8 @@ uv run python -m imgpipe --preset preset.toml [--input input] [--output output] 
   input/sub/b.jpg -> output/sub/b.jpg | size 650x470 -> 300x217 | saturation +4.2%
   ```
 
-  - `size`: the size before and after all steps, or `WxH (unchanged)`. The "before" size is that of the upright image when the orientation was fixed.
-  - `orientation`: shown only when the EXIF orientation fix changed the image, e.g. `orientation EXIF (rotated 90° cw)`. It comes right after `size`; other possible texts are `rotated 90° ccw`, `rotated 180°`, `mirrored horizontally`, `mirrored vertically`, `transposed` and `anti-transposed`.
+  - `size`: the size before and after all steps, or `WxH (unchanged)`. The "before" size is that of the upright image when the orientation was applied.
+  - `orientation`: shown only when the EXIF orientation was applied and changed the image, e.g. `orientation EXIF (rotated 90° cw)`. It comes right after `size`; other possible texts are `rotated 90° ccw`, `rotated 180°`, `mirrored horizontally`, `mirrored vertically`, `transposed` and `anti-transposed`.
   - `trim`: shown only when `trim_borders` cut something: the pixels removed from the left, top, right and bottom, e.g. `trim L12 T8 R28 B32`.
   - `brightness`: shown only when `auto_brightness` changed something, e.g. `brightness levels 18-231 -> 0-255` or `brightness x1.16 (mean 110, target 128)`.
   - `saturation`: the percent applied by `rnd_saturation`, or `n/a (grayscale)` when the image has no color. If several `rnd_saturation` steps are used, the values are listed separated by commas.

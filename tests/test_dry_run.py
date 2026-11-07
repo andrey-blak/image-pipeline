@@ -249,3 +249,13 @@ def test_resize_before_saturation_runs_for_real_so_a_mode_change_is_seen(ctx):
     ctx = Context(rng=random.Random(1))
     Pipeline([resize, saturation]).process(Image.new("L", (10, 5), 100), ctx, dry_run=True)
     assert ctx.changes == {"saturation": "+5.0%"}
+
+
+@pytest.mark.parametrize("mode", ["apply", "keep", "remove"])
+def test_dry_run_report_equals_the_real_one_for_every_exif_orientation(make_tagged_image, tmp_path, mode):
+    make_tagged_image("in/phone.jpg", 6, size=(40, 20))
+    pipeline = Pipeline([create_step("resize", {"size": 10})], mode)
+    _, dry = reports_of(pipeline, tmp_path / "in", tmp_path / "out", 1, dry_run=True)
+    _, real = reports_of(pipeline, tmp_path / "in", tmp_path / "out", 1, dry_run=False)
+    assert dry == real
+    assert ("orientation" in real[0].changes) is (mode == "apply")
