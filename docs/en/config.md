@@ -40,7 +40,7 @@ Changes saturation by a random percent in `[min_percent, max_percent]`, drawn se
 ## Command line
 
 ```
-uv run python -m imgpipe --config config.toml [--input input] [--output output] [--seed N] [--verbose]
+uv run python -m imgpipe --config config.toml [--input input] [--output output] [--seed N] [--verbose] [--dry-run]
 ```
 
 - `--input` (default `input`): searched recursively for images.
@@ -54,4 +54,8 @@ uv run python -m imgpipe --config config.toml [--input input] [--output output] 
 
   - `size`: the size before and after all steps, or `WxH (unchanged)`.
   - `saturation`: the percent applied by `rnd_saturation`, or `n/a (grayscale)` when the image has no color. If several `rnd_saturation` steps are used, the values are listed separated by commas.
+- `-n`, `--dry-run`: shows what would be done without writing anything (the output folder is not even created). It always prints the per-file lines described under `--verbose`.
+  - Every image is read and the steps are applied, so the sizes and random values are exactly those a real run with the same `--seed` would give, and unreadable files are reported as in a real run.
+  - Work that nothing later needs is skipped: for example the saturation change is not applied to the pixels when no later step reads them, and a `resize` that is the last step only reports the size it would produce instead of resampling the image.
+  - A dry run does not encode or write files, so it cannot detect problems that only occur when writing (an unwritable output folder, a color mode a format cannot store).
 - Files that cannot be read or processed are skipped with a warning; the batch continues. Originals are never modified.

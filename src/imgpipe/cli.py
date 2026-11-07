@@ -17,6 +17,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="list each file's original name, new name and applied changes"
     )
+    parser.add_argument(
+        "-n", "--dry-run", action="store_true",
+        help="show what would be done (like --verbose) without writing any files",
+    )
     return parser
 
 
@@ -35,15 +39,24 @@ def main(argv: list[str] | None = None) -> int:
         if not args.input.is_dir():
             raise ConfigError(f"input folder not found: {args.input}")
         on_file = None
-        if args.verbose:
+        if args.verbose or args.dry_run:
             def on_file(report: FileReport) -> None:
                 print(format_report(report, args.input, args.output), flush=True)
 
-        result = Pipeline(steps).run(args.input, args.output, random.Random(args.seed), on_file)
+        if args.dry_run:
+            print("Dry run (no changes will be made):", flush=True)
+        result = Pipeline(steps).run(
+            args.input, args.output, random.Random(args.seed), on_file, dry_run=args.dry_run
+        )
     except ConfigError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
     for path, reason in result.skipped:
         print(f"warning: skipped {path}: {reason}", file=sys.stderr)
-    print(f"Processed {len(result.processed)} image(s), skipped {len(result.skipped)}.")
+    count = len(result.processed)
+    images = f"{count} image" if count == 1 else f"{count} images"
+    verb = "would be processed" if args.dry_run else "processed"
+    print(f"{images} {verb}, {len(result.skipped)} skipped.")
+    if args.dry_run:
+        print("Nothing was written.")
     return 0

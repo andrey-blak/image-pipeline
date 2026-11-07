@@ -23,10 +23,22 @@ class Context:
 
     ``changes`` collects what the steps applied to the current image (for the
     verbose report); steps add entries with ``record``.
+
+    In a dry run the pipeline sets, before each step, what that step may skip
+    because no later step needs it: ``skip_pixels`` (the pixel work) and
+    ``skip_resize`` (changing the image size). A step that skips its size change
+    reports the size it would have produced with ``record_size``. Steps may ignore
+    the flags and always do their work.
     """
 
     rng: random.Random
     changes: dict[str, str] = field(default_factory=dict)
+    skip_pixels: bool = False
+    skip_resize: bool = False
+    reported_size: tuple[int, int] | None = None
+
+    def record_size(self, size: tuple[int, int]) -> None:
+        self.reported_size = size
 
     def record(self, key: str, text: str) -> None:
         """Note an applied change; recording the same key again appends to it."""
@@ -34,9 +46,18 @@ class Context:
 
 
 class Step:
-    """Base class for pipeline steps. Subclasses must also be dataclasses."""
+    """Base class for pipeline steps. Subclasses must also be dataclasses.
+
+    ``depends_on_pixels`` / ``depends_on_size``: whether the step's result (the size
+    it produces, the values it records) needs the incoming image's pixels (including
+    its mode, i.e. color type) / size.
+    A dry run uses them to skip earlier work that no later step needs. They default
+    to True, so a step that does not declare them is never skipped over.
+    """
 
     name: typing.ClassVar[str]
+    depends_on_pixels: typing.ClassVar[bool] = True
+    depends_on_size: typing.ClassVar[bool] = True
 
     @classmethod
     def from_options(cls, options: dict[str, typing.Any]) -> "Step":

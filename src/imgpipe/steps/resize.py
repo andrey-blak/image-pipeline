@@ -65,26 +65,43 @@ class Resize(Step):
         if self.mode == "padding":
             self._fill_color = _parse_fill(self.fill or "transparent")
 
-    def apply(self, image: Image.Image, ctx: Context) -> Image.Image:
+    # The result size is computed from the input size alone, not from the pixels.
+    depends_on_pixels = False
+    depends_on_size = True
+
+    def _output_size(self, size: tuple[int, int]) -> tuple[int, int]:
+        """The size this step produces for an input of ``size``."""
+        w, h = size
         if self.mode == "longest_side":
-            return self._longest_side(image)
-        if image.size == (self.width, self.height):
+            longest = max(w, h)
+            if longest == self.size or (longest < self.size and not self.upscale):
+                return size
+            scale = self.size / longest
+            width, height = (max(1, round(side * scale)) for side in size)
+            if w >= h:
+                width = self.size
+            else:
+                height = self.size
+            return width, height
+        if self.mode == "crop" and not self.upscale and (w < self.width or h < self.height):
+            return size  # too small to cover the target; left as it is
+        return self.width, self.height
+
+    def apply(self, image: Image.Image, ctx: Context) -> Image.Image:
+        target = self._output_size(image.size)
+        if target == image.size:
             return image
+        if ctx.skip_pixels:
+            # Dry run: no later step needs the pixels.
+            if ctx.skip_resize:
+                ctx.record_size(target)  # nor the size: just report it
+                return image
+            return Image.new(image.mode, target)  # a blank image of the right size
+        if self.mode == "longest_side":
+            return normalize_mode(image).resize(target, Image.Resampling.LANCZOS)
         if self.mode == "padding":
             return self._padding(image)
         return self._crop(image)
-
-    def _longest_side(self, image: Image.Image) -> Image.Image:
-        longest = max(image.size)
-        if longest == self.size or (longest < self.size and not self.upscale):
-            return image
-        scale = self.size / longest
-        width, height = (max(1, round(side * scale)) for side in image.size)
-        if image.width >= image.height:
-            width = self.size
-        else:
-            height = self.size
-        return normalize_mode(image).resize((width, height), Image.Resampling.LANCZOS)
 
     def _padding(self, image: Image.Image) -> Image.Image:
         target = (self.width, self.height)
@@ -109,8 +126,6 @@ class Resize(Step):
         return result.convert("RGB")
 
     def _crop(self, image: Image.Image) -> Image.Image:
-        if not self.upscale and (image.width < self.width or image.height < self.height):
-            return image
         scale = max(self.width / image.width, self.height / image.height)
         if scale != 1:
             new_size = (

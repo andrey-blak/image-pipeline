@@ -13,6 +13,12 @@ class RandomSaturation(Step):
     min_percent: float
     max_percent: float
 
+    # What it records depends on the image mode (grayscale images get no saturation),
+    # and earlier steps such as resize `padding` can change the mode. The mode counts
+    # as "pixels" here, so earlier steps must produce real images for a faithful dry run.
+    depends_on_pixels = True
+    depends_on_size = False
+
     def __post_init__(self):
         if self.min_percent > self.max_percent:
             raise ValueError(
@@ -24,11 +30,13 @@ class RandomSaturation(Step):
 
     def apply(self, image: Image.Image, ctx: Context) -> Image.Image:
         percent = ctx.rng.uniform(self.min_percent, self.max_percent)
-        image = normalize_mode(image)
         if image.mode in ("L", "LA"):
             ctx.record("saturation", "n/a (grayscale)")
             return image  # no color to saturate
         ctx.record("saturation", f"{percent:+.1f}%")
+        if ctx.skip_pixels:
+            return image  # dry run: no later step needs the pixels
+        image = normalize_mode(image)
         factor = 1 + percent / 100
         if image.mode == "RGBA":
             # Enhancing RGBA directly would distort the alpha channel.

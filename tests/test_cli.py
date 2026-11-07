@@ -1,4 +1,6 @@
 import re
+
+import pytest
 from pathlib import Path
 
 from PIL import Image
@@ -32,7 +34,7 @@ def test_end_to_end(make_image, tmp_path, capsys):
                  "--output", str(tmp_path / "out"), "--seed", "1"])
 
     assert code == 0
-    assert "Processed 2 image(s), skipped 0." in capsys.readouterr().out
+    assert "2 images processed, 0 skipped." in capsys.readouterr().out
     with Image.open(tmp_path / "out/a.png") as a, Image.open(tmp_path / "out/sub/b.jpg") as b:
         assert a.size == (10, 5)
         assert b.size == (5, 10)
@@ -83,7 +85,7 @@ def test_bad_file_gives_warning_and_exit_zero(make_image, tmp_path, capsys):
     captured = capsys.readouterr()
     assert code == 0
     assert "warning: skipped" in captured.err and "broken.png" in captured.err
-    assert "Processed 2 image(s), skipped 1." in captured.out
+    assert "2 images processed, 1 skipped." in captured.out
 
 
 def run_verbose(tmp_path, seed="1"):
@@ -103,14 +105,14 @@ def test_verbose_lists_each_file(make_image, tmp_path, capsys):
                            old=old, new=new),
             line,
         )
-    assert lines[-1] == "Processed 2 image(s), skipped 0."
+    assert lines[-1] == "2 images processed, 0 skipped."
     assert len(lines) == 3
 
 
 def test_no_file_lines_without_verbose(make_image, tmp_path, capsys):
     config = setup(make_image, tmp_path)
     main(["--config", str(config), "--input", str(tmp_path / "in"), "--output", str(tmp_path / "out")])
-    assert capsys.readouterr().out.splitlines() == ["Processed 2 image(s), skipped 0."]
+    assert capsys.readouterr().out.splitlines() == ["2 images processed, 0 skipped."]
 
 
 def test_verbose_output_repeatable_with_seed(make_image, tmp_path, capsys):
@@ -129,7 +131,7 @@ def test_verbose_warning_stays_on_stderr_and_summary_is_last(make_image, tmp_pat
     captured = capsys.readouterr()
     assert "broken.png" not in captured.out
     assert "warning: skipped" in captured.err and "broken.png" in captured.err
-    assert captured.out.splitlines()[-1] == "Processed 2 image(s), skipped 1."
+    assert captured.out.splitlines()[-1] == "2 images processed, 1 skipped."
 
 
 def test_verbose_without_config_does_nothing(capsys):
@@ -153,3 +155,89 @@ def test_short_option_v_is_the_same_as_verbose(make_image, tmp_path, capsys):
     main(args + ["-v"])
     assert capsys.readouterr().out == long_form
     assert long_form.count(" | size ") == 2
+
+
+def run_cli(tmp_path, *extra, seed="1"):
+    return main(["--config", str(tmp_path / "config.toml"), "--input", str(tmp_path / "in"),
+                 "--output", str(tmp_path / "out"), "--seed", seed, *extra])
+
+
+@pytest.mark.parametrize("flag", ["--dry-run", "-n"])
+def test_dry_run_prints_files_summary_and_writes_nothing(make_image, tmp_path, capsys, flag):
+    setup(make_image, tmp_path)
+    assert run_cli(tmp_path, flag) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == "Dry run (no changes will be made):"
+    assert len(lines) == 5 and " | size 40x20 -> 10x5 | saturation " in lines[1]
+    assert lines[-2:] == ["2 images would be processed, 0 skipped.", "Nothing was written."]
+    assert not (tmp_path / "out").exists()
+
+
+def test_dry_run_lines_equal_a_real_verbose_run(make_image, tmp_path, capsys):
+    setup(make_image, tmp_path)
+    run_cli(tmp_path, "-n", seed="5")
+    dry = capsys.readouterr().out.splitlines()[1:-2]  # without header and summary
+    run_cli(tmp_path, "-v", seed="5")
+    real = capsys.readouterr().out.splitlines()[:-1]  # without summary
+    assert dry == real and len(dry) == 2
+    assert (tmp_path / "out/a.png").exists()
+
+
+def test_dry_run_with_verbose_prints_each_file_once(make_image, tmp_path, capsys):
+    setup(make_image, tmp_path)
+    run_cli(tmp_path, "-n", "-v")
+    assert len(capsys.readouterr().out.splitlines()) == 5
+
+
+def test_dry_run_reports_bad_file_as_warning(make_image, tmp_path, capsys):
+    setup(make_image, tmp_path)
+    (tmp_path / "in/broken.png").write_bytes(b"junk")
+    assert run_cli(tmp_path, "-n") == 0
+
+    captured = capsys.readouterr()
+    assert "warning: skipped" in captured.err and "broken.png" in captured.err
+    assert captured.out.splitlines()[-2:] == ["2 images would be processed, 1 skipped.", "Nothing was written."]
+
+
+def test_dry_run_still_rejects_a_bad_config(tmp_path, capsys):
+    (tmp_path / "config.toml").write_text('[[steps]]\nname = "nope"\n')
+    (tmp_path / "in").mkdir()
+    assert run_cli(tmp_path, "-n") == 2
+    assert "error: unknown step 'nope'" in capsys.readouterr().err
+
+
+def test_dry_run_without_config_does_nothing(capsys):
+    assert main(["-n"]) == 0
+    assert "nothing to do" in capsys.readouterr().out.lower()
+
+
+def test_singular_image_in_summary(make_image, tmp_path, capsys):
+    config = tmp_path / "config.toml"
+    config.write_text(CONFIG)
+    make_image("in/a.png")
+    run_cli(tmp_path)
+    assert capsys.readouterr().out.splitlines()[-1] == "1 image processed, 0 skipped."
+    run_cli(tmp_path, "-n")
+    assert capsys.readouterr().out.splitlines()[-2:] == ["1 image would be processed, 0 skipped.", "Nothing was written."]
+
+
+def test_no_images_found_summary(tmp_path, capsys):
+    (tmp_path / "config.toml").write_text(CONFIG)
+    (tmp_path / "in").mkdir()
+    run_cli(tmp_path)
+    assert capsys.readouterr().out.splitlines() == ["0 images processed, 0 skipped."]
+
+
+def test_dry_run_header_not_printed_for_config_errors(tmp_path, capsys):
+    (tmp_path / "config.toml").write_text('[[steps]]\nname = "nope"\n')
+    (tmp_path / "in").mkdir()
+    run_cli(tmp_path, "-n")
+    assert "Dry run" not in capsys.readouterr().out
+
+
+def test_real_run_has_no_dry_run_header_or_footer(make_image, tmp_path, capsys):
+    setup(make_image, tmp_path)
+    run_cli(tmp_path, "-v")
+    out = capsys.readouterr().out
+    assert "Dry run" not in out and "Nothing was written" not in out
