@@ -7,7 +7,7 @@ from imgpipe.steps import REGISTRY, Step, create_step, register
 
 
 def test_builtin_steps_are_registered():
-    assert {"resize", "rnd_saturation", "trim_borders", "auto_brightness"} <= set(REGISTRY)
+    assert {"resize", "rnd_saturation", "trim_borders", "auto_brightness", "rotate", "rnd_rotate"} <= set(REGISTRY)
 
 
 def test_create_step_by_name():

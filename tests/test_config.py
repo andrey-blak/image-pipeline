@@ -56,8 +56,8 @@ def test_unknown_top_level_key(tmp_path):
 
 
 def test_step_errors_propagate(tmp_path):
-    with pytest.raises(ConfigError, match="unknown step 'rotate'"):
-        load_config(write(tmp_path, '[[steps]]\nname = "rotate"\n'))
+    with pytest.raises(ConfigError, match="unknown step 'sharpen'"):
+        load_config(write(tmp_path, '[[steps]]\nname = "sharpen"\n'))
 
 
 def test_resize_padding_options_loaded(tmp_path):

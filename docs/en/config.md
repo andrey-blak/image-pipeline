@@ -100,6 +100,31 @@ Cuts off solid-color or transparent margins around the content (scans, screensho
 - The cut is a rectangle: the smallest one that contains everything that is not border, so margins of different widths are all removed, and a speck in a margin keeps the margin around it.
 - With `--verbose` or `--dry-run`, a `trim` entry such as `trim L12 T8 R28 B32` shows how many pixels were removed from the left, top, right and bottom (only when something was cut).
 
+### `rotate`
+Rotates by a fixed angle. For a random angle use `rnd_rotate`. A good place in a pipeline: after `trim_borders` and before `resize`.
+
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `angle` | float | required | Degrees. **Positive turns clockwise**, negative counterclockwise. Any number is accepted. |
+| `corners` | string | `"crop"` | What to do with the empty corners that a tilted picture leaves: `crop` or `fill` (see below). |
+| `fill` | string | `"transparent"` | `corners = "fill"` only. `transparent`, a color name such as `white`, or hex such as `#ffffff` (`#rrggbbaa` for a partly transparent fill). Rejected with `crop`. |
+
+- **Exact turns:** multiples of 90 degrees (`90`, `180`, `-90`, `270`, ...) are lossless turns with no empty corners, so `corners` and `fill` make no difference. A multiple of 360 (including `0`) does nothing.
+- **`corners = "crop"`** cuts away the empty corners: the result is the largest rectangle, centered, with the same proportions as the original, that lies completely inside the rotated picture. A little of the picture is lost at the edges (for a 100x60 picture the width and height shrink by about 3% at 1°, 12% at 5° and 21% at 10°); the size shrinks accordingly, and a later `resize` brings it to the target. Nothing but picture is left in the result, with no filled or transparent corners.
+- **`corners = "fill"`** keeps the whole picture on a larger canvas, just big enough to hold it, and fills the corners with `fill`. With the default `transparent` fill the result has an alpha channel (flattened onto the `[output]` `background` when the output format has no transparency, such as JPEG). A color without transparency keeps images without alpha as they are. Edges of the rotated picture are not smoothed.
+- With `--verbose` or `--dry-run`, a `rotation` entry shows the angle, e.g. `rotation +90°` or `rotation -12.5°` (nothing when the angle is a multiple of 360).
+
+### `rnd_rotate`
+Rotates by a random angle, drawn separately for each image (repeatable with `--seed`). Corners are handled as in `rotate`.
+
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `min_angle` | float | `0` | Smallest angle in degrees, an absolute value: `0` or more. |
+| `max_angle` | float | `5` | Largest angle in degrees, an absolute value: at most `180`, not less than `min_angle`. |
+| `corners`, `fill` | | `"crop"`, `"transparent"` | As in `rotate`. |
+
+The size of the angle is drawn uniformly between `min_angle` and `max_angle`, and the direction, clockwise or counterclockwise, is chosen at random with equal probability. So the default `0` to `5` means "up to 5° either way", and `min_angle = 2, max_angle = 5` means "between 2° and 5°, either way" (never less than 2°). With `min_angle = max_angle` the angle is always that size, in a random direction. With `0` and `0` nothing is rotated. The `rotation` entry in the `--verbose` / `--dry-run` line shows the angle drawn, e.g. `rotation +3.2°` (positive: clockwise).
+
 ### `resize`
 Scales an image keeping its proportions. Which options apply depends on `mode`:
 

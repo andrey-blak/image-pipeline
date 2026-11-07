@@ -23,6 +23,20 @@ tolerance = 5         # 0-255, default - 0: how far colors may differ and still 
                       # corners from each other (auto) or border pixels from the background.
                       # 0 = exact. Photos and scans usually need approximately 5-10.
 
+# Rotate by a random angle, drawn per image (after `trim_borders`, before `resize`).
+[[steps]]
+name = "rnd_rotate"
+min_angle = 0         # the angle is min_angle..max_angle degrees (absolute values),
+max_angle = 5         # clockwise or counterclockwise at random. Default 0..5
+corners = "crop"      # default: cut away the empty corners. Or "fill": keep everything on a
+                      # larger canvas and fill the corners with `fill`
+# fill = "white"        # corners = "fill" only; default "transparent"
+
+# Rotate by a fixed angle (positive = clockwise; 90, 180, 270 are exact turns):
+#   [[steps]]
+#   name = "rotate"
+#   angle = 90
+
 # Scale keeping proportions: the longer side becomes `size` pixels.
 [[steps]]
 name = "resize"

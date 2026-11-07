@@ -433,3 +433,19 @@ def test_invalid_output_table_exits_with_an_error(tmp_path, capsys):
     write_output_config(tmp_path, '\n[output]\nformat = "heic"\n')
     assert run_cli(tmp_path) == 2
     assert "[output]: unknown format 'heic'" in capsys.readouterr().err
+
+
+# ---------- rotation ----------
+
+def test_verbose_and_dry_run_show_the_rotation_entry(make_image, tmp_path, capsys):
+    make_image("in/a.png", size=(100, 60))
+    (tmp_path / "config.toml").write_text(
+        '[[steps]]\nname = "rnd_rotate"\n\n[[steps]]\nname = "resize"\nsize = 30\n'
+    )
+    run_cli(tmp_path, "-v", seed="3")
+    real = capsys.readouterr().out.splitlines()[0]
+    run_cli(tmp_path, "-n", seed="3")
+    dry = capsys.readouterr().out.splitlines()[1]
+
+    assert re.search(r"\| size 100x60 -> \d+x\d+ \| rotation [+-][0-5]\.\d°$", real)
+    assert dry == real
