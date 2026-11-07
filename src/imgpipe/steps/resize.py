@@ -5,7 +5,7 @@ from PIL import Image
 from imgpipe.colors import TRANSPARENT, parse_color
 from imgpipe.steps import Context, Step, normalize_mode, register
 
-MODES = ("longest_side", "padding", "crop")
+MODES = ("longest_side", "scale", "padding", "crop")
 
 
 @register("resize")
@@ -14,16 +14,17 @@ class Resize(Step):
     """Scale keeping proportions.
 
     ``longest_side``: the longer side becomes ``size``.
+    ``scale``: ``width`` or ``height`` (exactly one) is set, the other side follows.
     ``padding``: fit inside ``width`` x ``height`` (or ``size`` x ``size``), fill the rest.
     ``crop``: cover ``width`` x ``height`` completely, center-crop the overflow.
-    Images smaller than the target are enlarged only with ``upscale``.
+    Images smaller than the target are enlarged unless ``upscale`` is false.
     """
 
     mode: str = "longest_side"
     size: int | None = None
     width: int | None = None
     height: int | None = None
-    upscale: bool = False
+    upscale: bool = True
     fill: str | None = None
 
     def __post_init__(self):
@@ -38,6 +39,14 @@ class Resize(Step):
             if self.size is None:
                 raise ValueError("missing required option 'size'")
             for name in ("width", "height", "fill"):
+                if getattr(self, name) is not None:
+                    raise ValueError(f"option '{name}' is not used by mode '{self.mode}'")
+            return
+
+        if self.mode == "scale":
+            if (self.width is None) == (self.height is None):
+                raise ValueError("mode 'scale' needs exactly one of 'width' and 'height'")
+            for name in ("size", "fill"):
                 if getattr(self, name) is not None:
                     raise ValueError(f"option '{name}' is not used by mode '{self.mode}'")
             return
@@ -71,6 +80,14 @@ class Resize(Step):
             else:
                 height = self.size
             return width, height
+        if self.mode == "scale":
+            if self.width is not None:
+                target = (self.width, max(1, round(h * self.width / w)))
+            else:
+                target = (max(1, round(w * self.height / h)), self.height)
+            if not self.upscale and (target[0] > w or target[1] > h):
+                return size
+            return target
         if self.mode == "crop" and not self.upscale and (w < self.width or h < self.height):
             return size  # too small to cover the target; left as it is
         return self.width, self.height
@@ -85,7 +102,7 @@ class Resize(Step):
                 ctx.record_size(target)  # nor the size: just report it
                 return image
             return Image.new(image.mode, target)  # a blank image of the right size
-        if self.mode == "longest_side":
+        if self.mode in ("longest_side", "scale"):
             return normalize_mode(image).resize(target, Image.Resampling.LANCZOS)
         if self.mode == "padding":
             return self._padding(image)

@@ -155,9 +155,9 @@ def test_on_file_reports_each_processed_file_in_order(make_image, tmp_path):
 
 
 def test_report_says_when_size_is_unchanged(make_image, tmp_path):
-    make_image("in/a.png", size=(5, 5))
+    make_image("in/a.png", size=(10, 10))
     _, reports = run_with_reports(pipeline(RESIZE), tmp_path)
-    assert reports[0].changes == {"size": "5x5 (unchanged)"}
+    assert reports[0].changes == {"size": "10x10 (unchanged)"}
 
 
 def test_resize_only_pipeline_reports_only_size(make_image, tmp_path):

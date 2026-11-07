@@ -69,7 +69,7 @@ def test_padding_fill_with_alpha(ctx):
 
 
 def test_padding_small_image_keeps_size_and_is_centered(ctx):
-    result = Resize(mode="padding", size=100, fill="white").apply(solid((40, 20)), ctx)
+    result = Resize(mode="padding", size=100, fill="white", upscale=False).apply(solid((40, 20)), ctx)
     assert result.size == (100, 100)
     assert result.getpixel((30, 40)) == RED
     assert result.getpixel((69, 59)) == RED
@@ -91,7 +91,7 @@ def test_padding_exact_size_unchanged(ctx):
 
 def test_padding_keeps_semi_transparent_pixels(ctx):
     image = solid((10, 10), (10, 20, 30, 128), mode="RGBA")
-    result = Resize(mode="padding", size=20).apply(image, ctx)
+    result = Resize(mode="padding", size=20, upscale=False).apply(image, ctx)
     assert result.getpixel((10, 10)) == (10, 20, 30, 128)
     assert result.getpixel((0, 0))[3] == 0
 
@@ -143,7 +143,7 @@ def test_crop_keeps_the_center_of_a_tall_image(ctx):
 @pytest.mark.parametrize("size", [(8, 8), (8, 20), (20, 8)])
 def test_crop_smaller_image_unchanged_without_upscale(ctx, size):
     image = solid(size)
-    assert Resize(mode="crop", size=10).apply(image, ctx) is image
+    assert Resize(mode="crop", size=10, upscale=False).apply(image, ctx) is image
 
 
 def test_crop_smaller_image_enlarged_with_upscale(ctx):
@@ -153,7 +153,7 @@ def test_crop_smaller_image_enlarged_with_upscale(ctx):
 
 def test_crop_exact_size_unchanged(ctx):
     image = solid((10, 10))
-    assert Resize(mode="crop", size=10).apply(image, ctx) is image
+    assert Resize(mode="crop", size=10, upscale=False).apply(image, ctx) is image
 
 
 def test_crop_one_dimension_already_exact(ctx):
@@ -182,7 +182,12 @@ def test_crop_keeps_transparency(ctx):
         ({"mode": "crop", "size": 10, "fill": "white"}, "'fill' is not used by mode 'crop'"),
         ({"mode": "padding", "size": 10, "fill": "nope"}, "invalid fill color"),
         ({"mode": "padding", "size": 10, "fill": "#12"}, "invalid fill color"),
-        ({"mode": "spin", "size": 10}, "unknown mode 'spin'; known modes: longest_side, padding, crop"),
+        ({"mode": "scale"}, "needs exactly one of 'width' and 'height'"),
+        ({"mode": "scale", "width": 10, "height": 10}, "needs exactly one of"),
+        ({"mode": "scale", "size": 10, "width": 10}, "'size' is not used by mode 'scale'"),
+        ({"mode": "scale", "width": 10, "fill": "white"}, "'fill' is not used by mode 'scale'"),
+        ({"mode": "scale", "height": 0}, "'height' must be at least 1"),
+        ({"mode": "spin", "size": 10}, "unknown mode 'spin'; known modes: longest_side, scale, padding, crop"),
         ({"mode": "padding", "width": 0, "height": 10}, "'width' must be at least 1"),
         ({"mode": "crop", "width": 10, "height": -5}, "'height' must be at least 1"),
         ({"mode": "padding", "size": 0}, "'size' must be at least 1"),
@@ -204,3 +209,36 @@ def test_square_shorthand_sets_width_and_height():
 def test_longest_side_without_size_reports_missing_option():
     with pytest.raises(PresetError, match="missing required option 'size'"):
         create_step("resize", {})
+
+
+# ---------- scale ----------
+
+def test_scale_width_keeps_proportions(ctx):
+    assert Resize(mode="scale", width=100).apply(solid((400, 200)), ctx).size == (100, 50)
+
+
+def test_scale_height_keeps_proportions(ctx):
+    assert Resize(mode="scale", height=100).apply(solid((400, 200)), ctx).size == (200, 100)
+
+
+def test_scale_rounds_the_other_side_and_keeps_it_at_least_one(ctx):
+    assert Resize(mode="scale", width=100).apply(solid((300, 100)), ctx).size == (100, 33)
+    assert Resize(mode="scale", width=10).apply(solid((1000, 1)), ctx).size == (10, 1)
+
+
+def test_scale_enlarges_small_images_by_default(ctx):
+    assert Resize(mode="scale", width=100).apply(solid((50, 20)), ctx).size == (100, 40)
+
+
+def test_scale_leaves_small_images_with_upscale_off(ctx):
+    image = solid((50, 20))
+    assert Resize(mode="scale", width=100, upscale=False).apply(image, ctx) is image
+
+
+def test_scale_shrinks_large_images_with_upscale_off(ctx):
+    assert Resize(mode="scale", height=10, upscale=False).apply(solid((50, 20)), ctx).size == (25, 10)
+
+
+def test_scale_same_size_is_unchanged(ctx):
+    image = solid((50, 20))
+    assert Resize(mode="scale", width=50).apply(image, ctx) is image

@@ -179,6 +179,8 @@ PRESETS = {
     "crop": [("resize", {"mode": "crop", "width": 100, "height": 60})],
     "saturation+resize": [("rnd_saturation", {"min_percent": 3, "max_percent": 40}), ("resize", {"size": 100})],
     "resize+resize": [("resize", {"size": 100}), ("resize", {"mode": "padding", "size": 80})],
+    "scale width": [("resize", {"mode": "scale", "width": 100}), ("rnd_saturation", {"min_percent": 3, "max_percent": 40})],
+    "scale height no upscale": [("resize", {"mode": "scale", "height": 100, "upscale": False})],
     "saturation only": [("rnd_saturation", {"min_percent": 3, "max_percent": 40})],
 }
 

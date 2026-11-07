@@ -21,9 +21,13 @@ def test_extreme_ratio_keeps_at_least_one_pixel(ctx):
     assert Resize(size=100).apply(Image.new("RGB", (5000, 3)), ctx).size == (100, 1)
 
 
-def test_small_image_not_enlarged_by_default(ctx):
+def test_small_image_enlarged_by_default(ctx):
+    assert Resize(size=300).apply(Image.new("RGB", (100, 50)), ctx).size == (300, 150)
+
+
+def test_small_image_not_enlarged_with_upscale_off(ctx):
     image = Image.new("RGB", (100, 50))
-    assert Resize(size=300).apply(image, ctx).size == (100, 50)
+    assert Resize(size=300, upscale=False).apply(image, ctx).size == (100, 50)
 
 
 def test_small_image_enlarged_when_upscale_enabled(ctx):

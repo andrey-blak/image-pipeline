@@ -195,15 +195,16 @@ Scales an image keeping its proportions. Which options apply depends on `mode`:
 | Mode | Result | Options |
 |---|---|---|
 | `"longest_side"` (default) | The longer side becomes `size`; the other side follows. | `size` (required) |
+| `"scale"` | Exactly one side is set (`width` or `height`); the other side follows, keeping the proportions. | `width` or `height` (exactly one) |
 | `"padding"` | Exactly the target size: the image is fitted inside it and the free area is filled. | `size` or `width` + `height`; `fill` |
 | `"crop"` | Exactly the target size: the image covers it completely, the overflow is cut off evenly on both sides (center-crop). | `size` or `width` + `height` |
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
-| `mode` | string | `"longest_side"` | `"longest_side"`, `"padding"` or `"crop"`. |
+| `mode` | string | `"longest_side"` | `"longest_side"`, `"scale"`, `"padding"` or `"crop"`. |
 | `size` | int | none | `longest_side`: target length of the longer side (required). `padding`/`crop`: shorthand for a square, `width = height = size`. Must be at least 1. |
-| `width`, `height` | int | none | `padding`/`crop`: target size in pixels; give both, or use `size` instead (not both). |
-| `upscale` | bool | `false` | Also enlarge images that are smaller than the target. Without it: `longest_side` leaves a small image unchanged; `padding` keeps it at its size, centered on the canvas; `crop` leaves an image unchanged if it is smaller than the target in either direction, so output sizes can vary. |
+| `width`, `height` | int | none | `scale`: give exactly one; the other side follows (rounded, at least 1). `padding`/`crop`: target size in pixels; give both, or use `size` instead (not both). |
+| `upscale` | bool | `true` | Images smaller than the target are enlarged too. With `upscale = false`: `longest_side` and `scale` leave a small image unchanged; `padding` keeps it at its size, centered on the canvas; `crop` leaves an image unchanged if it is smaller than the target in either direction, so output sizes can vary. |
 | `fill` | string | `"transparent"` | `padding` only. `"transparent"`, a color name such as `"white"`, or hex such as `"#ffffff"` (`"#rrggbbaa"` for a partly transparent fill). |
 
 Options that a mode does not use are rejected. Transparent areas are kept only in output formats that support transparency (PNG, WebP, AVIF, TIFF); for the others they are flattened onto the `background` color of the `[output]` section (white by default). Use `fill = "white"` (or another color) to have no transparency at all.

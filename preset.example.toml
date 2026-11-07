@@ -72,14 +72,22 @@ corners = "crop"
 # angle = 90
 
 # Scale keeping proportions.
+# [[steps]]
+# name = "resize"
+# default mode "longest_side": the longer side becomes `size` pixels
+# mode = "longest_side"
+# size = 300
+
+# upscale - true (default): images smaller than the target are enlarged too;
+# false: they are left as they are
+# upscale = true
+
+# To set only the width (or only the height) and let the other side follow:
 [[steps]]
 name = "resize"
-# default mode "longest_side": the longer side becomes `size` pixels
-mode = "longest_side"
-size = 300
-
-# upscale - if true: also upscale images smaller than the target
-upscale = false
+mode = "scale"
+width = 300
+upscale = true
 
 # Adjust brightness automatically.
 [[steps]]
