@@ -32,4 +32,6 @@ uv run python -m imgpipe [--config FILE] [--input DIR] [--output DIR] [--seed N]
 
 Exit code: `0` on success (files that cannot be processed are skipped with a warning), `2` on a config or folder error.
 
+A standalone executable (Linux, Windows; no installation) can be built or downloaded from a release: see `docs/en/building.md`.
+
 See `docs/en/config.md` for all options and `AGENTS.md` for the layout and conventions.

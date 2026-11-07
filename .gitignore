@@ -10,3 +10,7 @@ __pycache__/
 
 # Local standalone tools
 .tools/
+
+# Standalone executable builds
+build/
+dist/

@@ -7,6 +7,7 @@ dependencies = ["pillow"]
 
 [dependency-groups]
 dev = ["pytest"]
+build = ["pyinstaller"]
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14"]
