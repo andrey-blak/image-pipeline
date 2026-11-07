@@ -62,6 +62,22 @@ Scales an image keeping its proportions. Which options apply depends on `mode`:
 
 Options that a mode does not use are rejected. Transparent areas are kept only in formats that support transparency (PNG, WebP). JPEG output currently turns transparent areas black, until the output section gets a background color option; use `fill = "white"` (or another color) when the results will be JPEG.
 
+### `auto_brightness`
+Adjusts brightness automatically. It is best placed after `resize` (fewer pixels to analyze) and before `rnd_saturation`. Transparency is preserved, and fully transparent pixels are ignored when measuring brightness. Brightness here means the luminance of a pixel (its gray value).
+
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `method` | string | `"autocontrast"` | `autocontrast` or `target_mean`. |
+| `cutoff` | float | `0.5` | `autocontrast` only. Percent (0 to below 50) of the darkest and of the lightest pixels to ignore, so a few stray dark or bright pixels do not prevent the stretch. |
+| `target` | int | `128` | `target_mean` only. The average brightness to aim for, 0-255. |
+| `max_change` | float | `0.3` | `target_mean` only. The brightness factor is limited to `1 ± max_change` (0.3: between 0.7 and 1.3). Above 0, at most 1. |
+
+Options that belong to the other method are rejected.
+
+- `autocontrast` (levels stretch): finds the darkest and the lightest level in the image (after ignoring `cutoff` percent of the pixels at each end) and stretches that range to the full range, 0 to 255. The same adjustment is applied to every color channel, so the colors keep their balance and no color cast is removed or added. An image that already uses the full range, or has a single brightness, is left as it is.
+- `target_mean`: scales the brightness so that the average comes closer to `target`: every pixel is multiplied by `target / average`, but by no more than `max_change` up or down. The result can end up away from `target` when the factor is limited or bright pixels are clipped at white. An image that is already at the target, or is completely black, is left as it is.
+- With `--verbose` or `--dry-run`, a `brightness` entry shows what was done, only when something changed: `brightness levels 18-231 -> 0-255` (the levels that were stretched), or `brightness x1.16 (mean 110, target 128)` for `target_mean` (the factor and the average before; `, limited` is added when `max_change` held the factor back).
+
 ### `rnd_saturation`
 Changes saturation by a random percent in `[min_percent, max_percent]`, drawn separately for each image (repeatable with `--seed`). Transparency is preserved. Grayscale images are left unchanged.
 
@@ -88,6 +104,7 @@ uv run python -m imgpipe --config config.toml [--input input] [--output output] 
   - `size`: the size before and after all steps, or `WxH (unchanged)`. The "before" size is that of the upright image when the orientation was fixed.
   - `orientation`: shown only when the EXIF orientation fix changed the image, e.g. `orientation EXIF (rotated 90° cw)`. It comes right after `size`; other possible texts are `rotated 90° ccw`, `rotated 180°`, `mirrored horizontally`, `mirrored vertically`, `transposed` and `anti-transposed`.
   - `trim`: shown only when `trim_borders` cut something: the pixels removed from the left, top, right and bottom, e.g. `trim L12 T8 R28 B32`.
+  - `brightness`: shown only when `auto_brightness` changed something, e.g. `brightness levels 18-231 -> 0-255` or `brightness x1.16 (mean 110, target 128)`.
   - `saturation`: the percent applied by `rnd_saturation`, or `n/a (grayscale)` when the image has no color. If several `rnd_saturation` steps are used, the values are listed separated by commas.
 - `-n`, `--dry-run`: shows what would be done without writing anything (the output folder is not even created). It always prints the per-file lines described under `--verbose`.
   - Every image is read and the steps are applied, so the sizes and random values are exactly those a real run with the same `--seed` would give, and unreadable files are reported as in a real run.

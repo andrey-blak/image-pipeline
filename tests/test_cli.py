@@ -320,3 +320,23 @@ def test_verbose_and_dry_run_show_the_trim_entry(tmp_path, capsys):
 
     assert real.endswith("| size 100x60 -> 10x3 | trim L12 T8 R28 B32")
     assert dry == real
+
+
+# ---------- auto_brightness ----------
+
+def test_verbose_and_dry_run_show_the_brightness_entry(tmp_path, capsys):
+    (tmp_path / "in").mkdir()
+    image = Image.new("L", (40, 30), 80)
+    image.paste(140, (20, 0, 40, 30))
+    image.save(tmp_path / "in/dark.png")
+    (tmp_path / "config.toml").write_text(
+        '[[steps]]\nname = "auto_brightness"\ncutoff = 0\n\n[[steps]]\nname = "resize"\nsize = 20\n'
+    )
+
+    run_cli(tmp_path, "-v")
+    real = capsys.readouterr().out.splitlines()[0]
+    run_cli(tmp_path, "-n")
+    dry = capsys.readouterr().out.splitlines()[1]
+
+    assert real.endswith("| size 40x30 -> 20x15 | brightness levels 80-140 -> 0-255")
+    assert dry == real

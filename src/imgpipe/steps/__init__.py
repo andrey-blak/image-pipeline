@@ -137,4 +137,4 @@ def normalize_mode(image: Image.Image) -> Image.Image:
 
 
 # Import for the side effect of registering the built-in steps.
-from imgpipe.steps import resize, rnd_saturation, trim_borders  # noqa: E402,F401
+from imgpipe.steps import auto_brightness, resize, rnd_saturation, trim_borders  # noqa: E402,F401

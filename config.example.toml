@@ -33,6 +33,17 @@ size = 300
 #     width = 300
 #     height = 200
 
+# Adjust brightness automatically (best after `resize`).
+[[steps]]
+name = "auto_brightness"
+# method = "autocontrast"   # default: stretch the darkest..lightest levels to 0..255, keeping colors
+# cutoff = 0.5              # autocontrast only: percent of darkest/lightest pixels to ignore
+#
+# Or scale toward an average brightness instead (replace the lines above):
+#   method = "target_mean"
+#   target = 128            # wanted average brightness, 0-255
+#   max_change = 0.3        # the factor is limited to 1 +/- this
+
 # Change saturation by a random percent in this range, drawn per image.
 [[steps]]
 name = "rnd_saturation"

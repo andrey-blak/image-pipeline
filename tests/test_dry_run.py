@@ -16,6 +16,12 @@ def test_undeclared_step_depends_on_everything():
     assert Step.depends_on_pixels is True and Step.depends_on_size is True
 
 
+def test_auto_brightness_reads_pixels_but_not_the_size():
+    from imgpipe.steps.auto_brightness import AutoBrightness
+
+    assert (AutoBrightness.depends_on_pixels, AutoBrightness.depends_on_size) == (True, False)
+
+
 def test_declared_dependencies():
     assert (Resize.depends_on_pixels, Resize.depends_on_size) == (False, True)
     # Saturation reads the image mode (grayscale or not), which counts as pixels.
