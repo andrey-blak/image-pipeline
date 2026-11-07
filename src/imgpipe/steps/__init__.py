@@ -8,7 +8,7 @@ import dataclasses
 import random
 import types
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from PIL import Image
 
@@ -19,9 +19,18 @@ REGISTRY: dict[str, type["Step"]] = {}
 
 @dataclass
 class Context:
-    """Per-run state shared by all steps. Random values are drawn from ``rng``."""
+    """Per-run state shared by all steps. Random values are drawn from ``rng``.
+
+    ``changes`` collects what the steps applied to the current image (for the
+    verbose report); steps add entries with ``record``.
+    """
 
     rng: random.Random
+    changes: dict[str, str] = field(default_factory=dict)
+
+    def record(self, key: str, text: str) -> None:
+        """Note an applied change; recording the same key again appends to it."""
+        self.changes[key] = f"{self.changes[key]}, {text}" if key in self.changes else text
 
 
 class Step:

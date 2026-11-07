@@ -40,10 +40,18 @@ Changes saturation by a random percent in `[min_percent, max_percent]`, drawn se
 ## Command line
 
 ```
-uv run python -m imgpipe --config config.toml [--input input] [--output output] [--seed N]
+uv run python -m imgpipe --config config.toml [--input input] [--output output] [--seed N] [--verbose]
 ```
 
 - `--input` (default `input`): searched recursively for images.
 - `--output` (default `output`): receives the results with the same relative paths, names and formats as the originals. This is temporary behavior until the output/naming section exists. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
 - `--seed`: makes random values repeatable.
+- `-v`, `--verbose`: prints one line to stdout for each file as soon as it is saved, with paths as given on the command line (warnings stay on stderr, the summary comes last):
+
+  ```
+  input/sub/b.jpg -> output/sub/b.jpg | size 650x470 -> 300x217 | saturation +4.2%
+  ```
+
+  - `size`: the size before and after all steps, or `WxH (unchanged)`.
+  - `saturation`: the percent applied by `rnd_saturation`, or `n/a (grayscale)` when the image has no color. If several `rnd_saturation` steps are used, the values are listed separated by commas.
 - Files that cannot be read or processed are skipped with a warning; the batch continues. Originals are never modified.

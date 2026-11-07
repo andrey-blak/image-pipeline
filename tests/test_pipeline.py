@@ -129,3 +129,57 @@ def test_crop_runs_on_jpeg_and_png(make_image, tmp_path):
     for name in ("a.jpg", "b.png"):
         with Image.open(tmp_path / "out" / name) as out:
             assert out.size == (10, 10)
+
+
+def run_with_reports(pl, tmp_path, seed=1):
+    reports = []
+    result = pl.run(tmp_path / "in", tmp_path / "out", random.Random(seed), on_file=reports.append)
+    return result, reports
+
+
+def test_on_file_reports_each_processed_file_in_order(make_image, tmp_path):
+    make_image("in/a.png", size=(40, 20))
+    make_image("in/sub/b.png", size=(40, 20))
+    _, reports = run_with_reports(pipeline(RESIZE, SATURATE), tmp_path)
+
+    assert [(r.source.as_posix(), r.target.as_posix()) for r in reports] == [
+        ("a.png", "a.png"),
+        ("sub/b.png", "sub/b.png"),
+    ]
+    for report in reports:
+        assert report.changes == {"size": "40x20 -> 10x5", "saturation": "+20.0%"}
+        assert list(report.changes) == ["size", "saturation"]
+
+
+def test_report_says_when_size_is_unchanged(make_image, tmp_path):
+    make_image("in/a.png", size=(5, 5))
+    _, reports = run_with_reports(pipeline(RESIZE), tmp_path)
+    assert reports[0].changes == {"size": "5x5 (unchanged)"}
+
+
+def test_resize_only_pipeline_reports_only_size(make_image, tmp_path):
+    make_image("in/a.png", size=(40, 20))
+    _, reports = run_with_reports(pipeline(RESIZE), tmp_path)
+    assert list(reports[0].changes) == ["size"]
+
+
+def test_repeated_step_changes_are_joined(make_image, tmp_path):
+    make_image("in/a.png", size=(40, 20))
+    _, reports = run_with_reports(pipeline(SATURATE, SATURATE), tmp_path)
+    assert reports[0].changes["saturation"] == "+20.0%, +20.0%"
+
+
+def test_changes_do_not_leak_between_images(make_image, tmp_path):
+    make_image("in/a.png", size=(40, 20))
+    make_image("in/b.png", size=(40, 20), mode="L", color=100)
+    _, reports = run_with_reports(pipeline(SATURATE), tmp_path)
+    assert reports[0].changes["saturation"] == "+20.0%"
+    assert reports[1].changes["saturation"] == "n/a (grayscale)"
+
+
+def test_skipped_file_gets_no_report(make_image, tmp_path):
+    make_image("in/a.png")
+    (tmp_path / "in/broken.png").write_bytes(b"junk")
+    result, reports = run_with_reports(pipeline(RESIZE), tmp_path)
+    assert [r.source.name for r in reports] == ["a.png"]
+    assert [p.name for p, _ in result.skipped] == ["broken.png"]

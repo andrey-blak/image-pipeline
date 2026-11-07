@@ -17,7 +17,7 @@ uv run python -m imgpipe --config config.example.toml --input input --output out
 ## Command line
 
 ```
-uv run python -m imgpipe [--config FILE] [--input DIR] [--output DIR] [--seed N]
+uv run python -m imgpipe [--config FILE] [--input DIR] [--output DIR] [--seed N] [--verbose]
 ```
 
 | Option | Default | Meaning |
@@ -26,6 +26,7 @@ uv run python -m imgpipe [--config FILE] [--input DIR] [--output DIR] [--seed N]
 | `--input DIR` | `input` | Folder searched recursively for images. |
 | `--output DIR` | `output` | Folder for the results; subfolders are mirrored. Must differ from the input folder. |
 | `--seed N` | random | Makes random values repeatable. |
+| `-v`, `--verbose` | off | Print one line per processed file: original path, new path, and the applied changes (size, saturation). |
 | `-h`, `--help` | | Show help. |
 
 Exit code: `0` on success (files that cannot be processed are skipped with a warning), `2` on a config or folder error.

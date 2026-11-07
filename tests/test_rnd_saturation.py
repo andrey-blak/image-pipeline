@@ -1,5 +1,6 @@
 import colorsys
 import random
+import re
 
 import pytest
 from PIL import Image
@@ -83,3 +84,20 @@ def test_min_above_max_rejected():
 def test_percent_below_minus_100_rejected():
     with pytest.raises(ValueError, match="above -100"):
         RandomSaturation(min_percent=-100, max_percent=0)
+
+
+def test_applied_percent_is_recorded(ctx):
+    RandomSaturation(min_percent=3, max_percent=5).apply(solid(), ctx)
+    assert list(ctx.changes) == ["saturation"]
+    assert re.fullmatch(r"\+[345]\.\d%", ctx.changes["saturation"])
+    assert 3 <= float(ctx.changes["saturation"].rstrip("%")) <= 5
+
+
+def test_negative_percent_recorded_with_sign(ctx):
+    RandomSaturation(min_percent=-20, max_percent=-20).apply(solid(), ctx)
+    assert ctx.changes == {"saturation": "-20.0%"}
+
+
+def test_grayscale_recorded_as_not_applicable(ctx):
+    RandomSaturation(min_percent=10, max_percent=10).apply(solid(100, mode="L"), ctx)
+    assert ctx.changes == {"saturation": "n/a (grayscale)"}

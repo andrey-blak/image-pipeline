@@ -26,7 +26,9 @@ class RandomSaturation(Step):
         percent = ctx.rng.uniform(self.min_percent, self.max_percent)
         image = normalize_mode(image)
         if image.mode in ("L", "LA"):
+            ctx.record("saturation", "n/a (grayscale)")
             return image  # no color to saturate
+        ctx.record("saturation", f"{percent:+.1f}%")
         factor = 1 + percent / 100
         if image.mode == "RGBA":
             # Enhancing RGBA directly would distort the alpha channel.
