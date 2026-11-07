@@ -1,3 +1,7 @@
+# Example preset. Text values are written in "quotes" (format = "jpg"),
+# numbers and true/false are not (quality = 80, keep_metadata = false).
+# Lines starting with # are comments.
+
 # Global options.
 [options]
 # Make photos upright according to their EXIF orientation tag (default: true).
@@ -5,19 +9,20 @@ fix_orientation = true
 
 # Output options. Control how the results are written.
 [output]
-# format - keep the original format by default; or png, jpg, webp, avif, gif, tiff, bmp
+# format - "keep" the original format (default); or "png", "jpg", "webp", "avif", "gif", "tiff", "bmp"
 format = "keep"
 
-# quality: 1-100, for jpg, webp and avif (default 80)
+# quality: 1-100, for "jpg", "webp" and "avif" (default 80)
 quality = 80
 
-# opaque color for transparency where the format has none (jpg, gif, bmp)
+# opaque color for transparency where the format has none ("jpg", "gif", "bmp")
 background = "white"
 
-# keep metadata: false - EXIF/XMP/comments are dropped; the ICC color profile always staysl true - keep all metadata
+# keep_metadata: false (default) - EXIF/XMP/comments are dropped (the ICC color profile always stays);
+# true - keep all metadata
 keep_metadata = false
 
-# New file names built from a pattern. Also a table that may be placed anywhere in the file.
+# New file names built from a pattern. May be placed anywhere in the file.
 # Without it the files keep their names. The extension is added automatically.
 [rename]
 pattern = "N YYYY-MM-dd HHmmssSSS-CCC-RRaaAALLBB"

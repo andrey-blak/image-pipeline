@@ -85,7 +85,7 @@ def test_resize_invalid_mode_options_reported_with_step_name(tmp_path):
         load_preset(path)
 
 
-# ---------- [options] table ----------
+# ---------- [options] section ----------
 
 STEP = '[[steps]]\nname = "resize"\nsize = 10\n'
 OPTIONS_OFF = "[options]\nfix_orientation = false\n"
@@ -102,21 +102,21 @@ def test_fix_orientation_can_be_set(tmp_path, value):
     assert [s.name for s in preset.steps] == ["resize"]
 
 
-def test_options_table_may_come_before_or_after_the_steps(tmp_path):
+def test_options_section_may_come_before_or_after_the_steps(tmp_path):
     before = load_preset(write(tmp_path, f"{OPTIONS_OFF}\n{STEP}"))
     after = load_preset(write(tmp_path, f"{STEP}\n{OPTIONS_OFF}"))
     assert before.fix_orientation is False and after.fix_orientation is False
     assert [s.name for s in before.steps] == [s.name for s in after.steps] == ["resize"]
 
 
-def test_options_table_between_steps(tmp_path):
+def test_options_section_between_steps(tmp_path):
     text = f'{STEP}\n{OPTIONS_OFF}\n[[steps]]\nname = "rnd_saturation"\nmin_percent = 1\nmax_percent = 2\n'
     preset = load_preset(write(tmp_path, text))
     assert preset.fix_orientation is False
     assert [s.name for s in preset.steps] == ["resize", "rnd_saturation"]
 
 
-def test_empty_options_table_is_fine(tmp_path):
+def test_empty_options_section_is_fine(tmp_path):
     assert load_preset(write(tmp_path, f"[options]\n{STEP}")).fix_orientation is True
 
 
@@ -132,13 +132,13 @@ def test_unknown_option_lists_the_known_ones(tmp_path):
 
 
 @pytest.mark.parametrize("text", ["options = 1\n", "options = [1]\n", '[[options]]\nfix_orientation = true\n'])
-def test_options_must_be_a_table(tmp_path, text):
-    with pytest.raises(PresetError, match=r"\[options\] must be a table"):
+def test_options_must_be_a_section(tmp_path, text):
+    with pytest.raises(PresetError, match=r"\[options\] must be a section"):
         load_preset(write(tmp_path, f"{STEP}\n{text}" if text.startswith("[[") else f"{text}\n{STEP}"))
 
 
 def test_old_top_level_form_gets_a_hint(tmp_path):
-    with pytest.raises(PresetError, match=r"option 'fix_orientation' belongs in the \[options\] table"):
+    with pytest.raises(PresetError, match=r"option 'fix_orientation' belongs in the \[options\] section"):
         load_preset(write(tmp_path, f"fix_orientation = true\n{STEP}"))
 
 
@@ -157,7 +157,7 @@ def test_options_alone_are_not_enough(tmp_path):
         load_preset(write(tmp_path, OPTIONS_OFF))
 
 
-# ---------- [output] table ----------
+# ---------- [output] section ----------
 
 from imgpipe.output import OutputSettings  # noqa: E402
 
@@ -172,10 +172,10 @@ def test_output_values_are_loaded(tmp_path):
     assert (output.format, output.quality, output.background, output.keep_metadata) == ("jpg", 80, "#102030", True)
 
 
-def test_output_table_may_come_before_or_after_the_steps(tmp_path):
-    table = '[output]\nformat = "webp"\n'
-    assert load_preset(write(tmp_path, f"{table}\n{STEP}")).output.format == "webp"
-    assert load_preset(write(tmp_path, f"{STEP}\n{table}")).output.format == "webp"
+def test_output_section_may_come_before_or_after_the_steps(tmp_path):
+    section = '[output]\nformat = "webp"\n'
+    assert load_preset(write(tmp_path, f"{section}\n{STEP}")).output.format == "webp"
+    assert load_preset(write(tmp_path, f"{STEP}\n{section}")).output.format == "webp"
 
 
 def test_output_and_options_tables_are_independent(tmp_path):
@@ -220,13 +220,13 @@ def test_invalid_output_values(tmp_path, lines, message):
 
 
 def test_output_key_at_the_top_level_gets_a_hint(tmp_path):
-    with pytest.raises(PresetError, match=r"option 'format' belongs in the \[output\] table"):
+    with pytest.raises(PresetError, match=r"option 'format' belongs in the \[output\] section"):
         load_preset(write(tmp_path, f'format = "jpg"\n{STEP}'))
 
 
 @pytest.mark.parametrize("text", ["output = 1\n", "output = [1]\n"])
-def test_output_must_be_a_table(tmp_path, text):
-    with pytest.raises(PresetError, match=r"\[output\] must be a table"):
+def test_output_must_be_a_section(tmp_path, text):
+    with pytest.raises(PresetError, match=r"\[output\] must be a section"):
         load_preset(write(tmp_path, f"{text}\n{STEP}"))
 
 
@@ -261,10 +261,10 @@ def test_no_steps_needed_when_the_global_tables_change_files(tmp_path, text, ste
 @pytest.mark.parametrize("text", CHANGES_NOTHING)
 @pytest.mark.parametrize("steps_line", ["", "steps = []\n"])
 def test_no_steps_and_nothing_changed_keeps_the_error(tmp_path, text, steps_line):
-    with pytest.raises(PresetError, match=r"define at least one \[\[steps\]\] table"):
+    with pytest.raises(PresetError, match=r"define at least one \[\[steps\]\] entry"):
         load_preset(write(tmp_path, f"{steps_line}{text}\n"))
 
 
-def test_steps_are_kept_next_to_a_file_changing_table(tmp_path):
+def test_steps_are_kept_next_to_a_file_changing_section(tmp_path):
     preset = load_preset(write(tmp_path, f'[output]\nformat = "png"\n{STEP}'))
     assert [s.name for s in preset.steps] == ["resize"]

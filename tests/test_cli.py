@@ -246,7 +246,7 @@ def test_real_run_has_no_dry_run_header_or_footer(make_image, tmp_path, capsys):
 # ---------- EXIF orientation ----------
 
 def write_preset(tmp_path, after=""):
-    """Write the standard preset, followed by extra TOML (e.g. an [options] table)."""
+    """Write the standard preset, followed by extra TOML (e.g. an [options] section)."""
     (tmp_path / "preset.toml").write_text(PRESET + after)
 
 
@@ -291,7 +291,7 @@ def test_old_top_level_fix_orientation_is_rejected_with_a_hint(tmp_path, capsys)
     (tmp_path / "preset.toml").write_text("fix_orientation = false\n" + PRESET)
     (tmp_path / "in").mkdir()
     assert run_cli(tmp_path) == 2
-    assert "option 'fix_orientation' belongs in the [options] table" in capsys.readouterr().err
+    assert "option 'fix_orientation' belongs in the [options] section" in capsys.readouterr().err
 
 
 # ---------- trim_borders ----------
@@ -344,8 +344,8 @@ def test_verbose_and_dry_run_show_the_brightness_entry(tmp_path, capsys):
 
 # ---------- [output] ----------
 
-def write_output_preset(tmp_path, table=""):
-    (tmp_path / "preset.toml").write_text(PRESET + table)
+def write_output_preset(tmp_path, section=""):
+    (tmp_path / "preset.toml").write_text(PRESET + section)
 
 
 def test_conversion_end_to_end(make_image, tmp_path, capsys):
@@ -428,7 +428,7 @@ def test_keep_mode_has_no_clashes_and_keeps_names(make_image, tmp_path, capsys):
     assert sorted(p.name for p in (tmp_path / "out").iterdir()) == ["a.jpg", "a.png"]
 
 
-def test_invalid_output_table_exits_with_an_error(tmp_path, capsys):
+def test_invalid_output_section_exits_with_an_error(tmp_path, capsys):
     (tmp_path / "in").mkdir()
     write_output_preset(tmp_path, '\n[output]\nformat = "heic"\n')
     assert run_cli(tmp_path) == 2
@@ -481,4 +481,4 @@ def test_keep_metadata_false_alone_strips_the_metadata(make_tagged_image, tmp_pa
 def test_background_alone_is_rejected_without_steps(make_image, tmp_path, capsys):
     code, captured = run_without_steps(make_image, tmp_path, '[output]\nbackground = "red"\n', capsys)
     assert code == 2
-    assert "define at least one [[steps]] table" in captured.err
+    assert "define at least one [[steps]] entry" in captured.err

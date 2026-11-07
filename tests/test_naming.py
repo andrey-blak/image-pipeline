@@ -186,17 +186,17 @@ def preset(tmp_path, text):
     return path
 
 
-def test_rename_table_is_loaded(tmp_path):
+def test_rename_section_is_loaded(tmp_path):
     rename = load_preset(preset(tmp_path, '[rename]\npattern = "N-CC"\ncounter_start = 5')).rename
     assert (rename.pattern, rename.counter_start) == ("N-CC", 5)
 
 
-def test_rename_defaults_and_absent_table(tmp_path):
+def test_rename_defaults_and_absent_section(tmp_path):
     assert load_preset(preset(tmp_path, '[rename]\npattern = "N"')).rename.counter_start == 1
     assert load_preset(preset(tmp_path, "")).rename is None
 
 
-def test_rename_table_may_come_after_the_steps(tmp_path):
+def test_rename_section_may_come_after_the_steps(tmp_path):
     path = tmp_path / "preset.toml"
     path.write_text('[[steps]]\nname = "resize"\nsize = 10\n\n[rename]\npattern = "N"\n')
     assert load_preset(path).rename.pattern == "N"
@@ -232,7 +232,7 @@ def test_rename_value_errors_name_the_section(tmp_path):
 def test_bare_top_level_pattern_gets_a_hint(tmp_path):
     path = tmp_path / "preset.toml"
     path.write_text('pattern = "N"\n[[steps]]\nname = "resize"\nsize = 10\n')
-    with pytest.raises(PresetError, match=r"option 'pattern' belongs in the \[rename\] table"):
+    with pytest.raises(PresetError, match=r"option 'pattern' belongs in the \[rename\] section"):
         load_preset(path)
 
 
@@ -249,7 +249,7 @@ def test_rename_alone_needs_no_steps(tmp_path):
 def test_no_steps_and_no_rename_is_still_an_error(tmp_path, text):
     path = tmp_path / "preset.toml"
     path.write_text(text)
-    with pytest.raises(PresetError, match="define at least one \\[\\[steps\\]\\] table"):
+    with pytest.raises(PresetError, match="define at least one \\[\\[steps\\]\\] entry"):
         load_preset(path)
 
 
