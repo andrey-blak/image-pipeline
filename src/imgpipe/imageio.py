@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import NamedTuple
 
 from PIL import Image
 
@@ -35,16 +36,48 @@ ORIENTATIONS = {
 }
 
 
-def load(path: Path) -> tuple[Image.Image, str, int | None]:
-    """Open and fully read an image; returns it with its original format and EXIF orientation."""
+class Metadata(NamedTuple):
+    """Metadata of a source image that can be carried over to the output (see ``output.write``)."""
+
+    exif: bytes | None = None
+    xmp: bytes | None = None
+    icc_profile: bytes | None = None
+    comment: bytes | None = None
+
+
+class Loaded(NamedTuple):
+    image: Image.Image
+    format: str
+    orientation: int | None
+    metadata: Metadata
+
+
+def _as_bytes(value) -> bytes | None:
+    if isinstance(value, str):
+        value = value.encode("utf-8")
+    return value or None
+
+
+def load(path: Path) -> Loaded:
+    """Open and fully read an image; returns it with its format, EXIF orientation and metadata."""
     with Image.open(path) as opened:
-        fmt = opened.format
-        try:
-            orientation = opened.getexif().get(EXIF_ORIENTATION_TAG)
-        except Exception:  # damaged EXIF data must not make the image unreadable
-            orientation = None
         opened.load()
-        return opened.copy(), fmt, orientation
+        fmt = opened.format
+        orientation = exif_bytes = None
+        try:
+            exif = opened.getexif()
+            orientation = exif.get(EXIF_ORIENTATION_TAG)
+            exif_bytes = exif.tobytes() if len(exif) else None
+        except Exception:  # damaged EXIF data must not make the image unreadable
+            pass
+        info = opened.info
+        metadata = Metadata(
+            exif=exif_bytes,
+            xmp=_as_bytes(info.get("xmp") or info.get("XML:com.adobe.xmp")),
+            icc_profile=_as_bytes(info.get("icc_profile")),
+            comment=_as_bytes(info.get("comment")),
+        )
+        return Loaded(opened.copy(), fmt, orientation, metadata)
 
 
 def fix_orientation(image: Image.Image, orientation: int | None) -> tuple[Image.Image, str | None]:
@@ -57,10 +90,3 @@ def fix_orientation(image: Image.Image, orientation: int | None) -> tuple[Image.
         return image, None
     transpose, description = ORIENTATIONS[orientation]
     return image.transpose(transpose), description
-
-
-def save(image: Image.Image, path: Path, fmt: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if fmt == "JPEG" and image.mode not in ("RGB", "L"):
-        image = image.convert("RGB")
-    image.save(path, format=fmt)

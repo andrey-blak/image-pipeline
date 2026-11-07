@@ -6,6 +6,14 @@
 # Make photos upright according to their EXIF orientation tag (default: true).
 # fix_orientation = true
 
+# How the results are written. Also a table that may be placed anywhere in the file.
+# Applied after the last step; it is not a step.
+[output]
+# format = "keep"          # keep the original format; or png, jpg, webp, avif, gif, tiff, bmp
+# quality = 90             # 1-100, for jpg, webp and avif (default 90)
+# background = "white"     # opaque color for transparency where the format has none (jpg, gif, bmp)
+# keep_metadata = false    # false: EXIF/XMP/comments are dropped; the ICC color profile always stays
+
 # Cut off solid-color or transparent margins (put it before `resize`).
 [[steps]]
 name = "trim_borders"

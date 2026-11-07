@@ -155,3 +155,76 @@ def test_other_top_level_keys_still_rejected(tmp_path):
 def test_options_alone_are_not_enough(tmp_path):
     with pytest.raises(ConfigError, match="at least one"):
         load_config(write(tmp_path, OPTIONS_OFF))
+
+
+# ---------- [output] table ----------
+
+from imgpipe.output import OutputSettings  # noqa: E402
+
+
+def test_output_defaults(tmp_path):
+    assert load_config(write(tmp_path, STEP)).output == OutputSettings()
+
+
+def test_output_values_are_loaded(tmp_path):
+    text = f'{STEP}\n[output]\nformat = "jpeg"\nquality = 80\nbackground = "#102030"\nkeep_metadata = true\n'
+    output = load_config(write(tmp_path, text)).output
+    assert (output.format, output.quality, output.background, output.keep_metadata) == ("jpg", 80, "#102030", True)
+
+
+def test_output_table_may_come_before_or_after_the_steps(tmp_path):
+    table = '[output]\nformat = "webp"\n'
+    assert load_config(write(tmp_path, f"{table}\n{STEP}")).output.format == "webp"
+    assert load_config(write(tmp_path, f"{STEP}\n{table}")).output.format == "webp"
+
+
+def test_output_and_options_tables_are_independent(tmp_path):
+    config = load_config(write(tmp_path, f'{STEP}\n[output]\nformat = "png"\n\n{OPTIONS_OFF}'))
+    assert config.output.format == "png" and config.fix_orientation is False
+
+
+def test_unknown_output_option_lists_the_known_ones(tmp_path):
+    with pytest.raises(ConfigError, match=r"unknown option\(s\) colour in \[output\]; known options: format, quality, background, keep_metadata"):
+        load_config(write(tmp_path, f'{STEP}\n[output]\ncolour = "x"\n'))
+
+
+@pytest.mark.parametrize(
+    "line, message",
+    [
+        ("format = 5", "option 'format' must be str"),
+        ('quality = "90"', "option 'quality' must be int"),
+        ("quality = 90.5", "option 'quality' must be int"),
+        ("quality = true", "option 'quality' must be int"),
+        ("background = 1", "option 'background' must be str"),
+        ('keep_metadata = "yes"', "option 'keep_metadata' must be bool"),
+    ],
+)
+def test_output_option_types(tmp_path, line, message):
+    with pytest.raises(ConfigError, match=message):
+        load_config(write(tmp_path, f"{STEP}\n[output]\n{line}\n"))
+
+
+@pytest.mark.parametrize(
+    "lines, message",
+    [
+        ('format = "heic"', r"\[output\]: unknown format 'heic'"),
+        ("quality = 0", r"\[output\]: 'quality' must be between 1 and 100"),
+        ('format = "png"\nquality = 80', r"\[output\]: option 'quality' is not used by format 'png'"),
+        ('background = "transparent"', r"\[output\]: 'background' must be an opaque color"),
+        ('background = "nope"', r"\[output\]: invalid background color 'nope'"),
+    ],
+)
+def test_invalid_output_values(tmp_path, lines, message):
+    with pytest.raises(ConfigError, match=message):
+        load_config(write(tmp_path, f"{STEP}\n[output]\n{lines}\n"))
+
+
+def test_output_key_at_the_top_level_gets_a_hint(tmp_path):
+    with pytest.raises(ConfigError, match=r"option 'format' belongs in the \[output\] table"):
+        load_config(write(tmp_path, f'format = "jpg"\n{STEP}'))
+
+
+@pytest.mark.parametrize("text", ["output = 1\n", "output = [1]\n"])
+def test_output_must_be_a_table(tmp_path, text):
+    with pytest.raises(ConfigError, match=r"\[output\] must be a table"):
+        load_config(write(tmp_path, f"{text}\n{STEP}"))

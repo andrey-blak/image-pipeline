@@ -340,3 +340,96 @@ def test_verbose_and_dry_run_show_the_brightness_entry(tmp_path, capsys):
 
     assert real.endswith("| size 40x30 -> 20x15 | brightness levels 80-140 -> 0-255")
     assert dry == real
+
+
+# ---------- [output] ----------
+
+def write_output_config(tmp_path, table=""):
+    (tmp_path / "config.toml").write_text(CONFIG + table)
+
+
+def test_conversion_end_to_end(make_image, tmp_path, capsys):
+    make_image("in/a.png", size=(40, 20))
+    make_image("in/sub/b.jpg", size=(20, 40))
+    write_output_config(tmp_path, '\n[output]\nformat = "webp"\nquality = 70\n')
+    assert run_cli(tmp_path, "-v") == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert f"{tmp_path}/out/a.webp | size 40x20 -> 10x5 | saturation " in lines[0]
+    assert f"{tmp_path}/out/sub/b.webp" in lines[1]
+    assert lines[-1] == "2 images processed, 0 skipped."
+    with Image.open(tmp_path / "out/a.webp") as image:
+        assert image.format == "WEBP" and image.size == (10, 5)
+
+
+def test_name_clash_is_reported_without_verbose(make_image, tmp_path, capsys):
+    make_image("in/a.png")
+    make_image("in/a.jpg")
+    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    assert run_cli(tmp_path) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines == [
+        "2 images processed, 0 skipped.",
+        "1 file got a number added to its name because the name was already taken:",
+        f"  {tmp_path}/in/a.png -> {tmp_path}/out/a-1.webp",
+    ]
+
+
+def test_several_clashes_use_the_plural(make_image, tmp_path, capsys):
+    for name in ("a.png", "a.jpg", "a.gif"):
+        make_image(f"in/{name}")
+    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    run_cli(tmp_path)
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[1] == "2 files got a number added to their names because the name was already taken:"
+    assert len(lines) == 4
+
+
+def test_dry_run_reports_clashes_too(make_image, tmp_path, capsys):
+    make_image("in/a.png")
+    make_image("in/a.jpg")
+    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    run_cli(tmp_path, "-n")
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[-4:] == [
+        "2 images would be processed, 0 skipped.",
+        "1 file would get a number added to its name because the name was already taken:",
+        f"  {tmp_path}/in/a.png -> {tmp_path}/out/a-1.webp",
+        "Nothing was written.",
+    ]
+    assert not (tmp_path / "out").exists()
+
+
+def test_verbose_line_shows_the_final_name(make_image, tmp_path, capsys):
+    make_image("in/a.png")
+    make_image("in/a.jpg")
+    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    run_cli(tmp_path, "-v")
+    out = capsys.readouterr().out
+    assert f"{tmp_path}/in/a.png -> {tmp_path}/out/a-1.webp" in out.splitlines()[1]
+
+
+def test_no_clash_block_when_nothing_was_renamed(make_image, tmp_path, capsys):
+    make_image("in/a.png")
+    make_image("in/b.jpg")
+    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    run_cli(tmp_path)
+    assert capsys.readouterr().out.splitlines() == ["2 images processed, 0 skipped."]
+
+
+def test_keep_mode_has_no_clashes_and_keeps_names(make_image, tmp_path, capsys):
+    make_image("in/a.png")
+    make_image("in/a.jpg")
+    write_output_config(tmp_path)
+    run_cli(tmp_path)
+    assert capsys.readouterr().out.splitlines() == ["2 images processed, 0 skipped."]
+    assert sorted(p.name for p in (tmp_path / "out").iterdir()) == ["a.jpg", "a.png"]
+
+
+def test_invalid_output_table_exits_with_an_error(tmp_path, capsys):
+    (tmp_path / "in").mkdir()
+    write_output_config(tmp_path, '\n[output]\nformat = "heic"\n')
+    assert run_cli(tmp_path) == 2
+    assert "[output]: unknown format 'heic'" in capsys.readouterr().err

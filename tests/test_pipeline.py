@@ -3,7 +3,7 @@ import random
 import pytest
 from PIL import Image
 
-from imgpipe import imageio
+from imgpipe import imageio, output
 from imgpipe.errors import ConfigError
 from imgpipe.pipeline import Pipeline
 from imgpipe.steps import Context, create_step
@@ -97,7 +97,10 @@ def test_same_seed_same_output(make_image, tmp_path):
 
 
 def test_rgba_image_saved_as_jpeg_does_not_fail(tmp_path):
-    imageio.save(Image.new("RGBA", (4, 4), (1, 2, 3, 4)), tmp_path / "x.jpg", "JPEG")
+    output.write(
+        Image.new("RGBA", (4, 4), (1, 2, 3, 4)), tmp_path / "x.jpg", output.OutputSettings(),
+        "JPEG", imageio.Metadata(),
+    )
     assert (tmp_path / "x.jpg").exists()
 
 

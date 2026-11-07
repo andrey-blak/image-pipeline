@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.dry_run:
             print("Dry run (no changes will be made):", flush=True)
-        result = Pipeline(config.steps, config.fix_orientation).run(
+        result = Pipeline(config.steps, config.fix_orientation, config.output).run(
             args.input, args.output, random.Random(args.seed), on_file, dry_run=args.dry_run
         )
     except ConfigError as e:
@@ -57,6 +57,17 @@ def main(argv: list[str] | None = None) -> int:
     images = f"{count} image" if count == 1 else f"{count} images"
     verb = "would be processed" if args.dry_run else "processed"
     print(f"{images} {verb}, {len(result.skipped)} skipped.")
+    if result.renamed:
+        # Always shown, not only with --verbose: the user did not choose these names.
+        many = len(result.renamed) > 1
+        print(
+            f"{len(result.renamed)} {'files' if many else 'file'} "
+            f"{'would get' if args.dry_run else 'got'} "
+            f"a number added to {'their names' if many else 'its name'} "
+            "because the name was already taken:"
+        )
+        for source, target in result.renamed:
+            print(f"  {args.input / source} -> {args.output / target}")
     if args.dry_run:
         print("Nothing was written.")
     return 0

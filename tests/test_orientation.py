@@ -33,7 +33,7 @@ def save_tagged(path, image, value):
 def test_fix_makes_the_stored_image_upright(tmp_path, value):
     path = save_tagged(tmp_path / "x.png", upright().transpose(STORE[value]), value)
 
-    image, fmt, orientation = imageio.load(path)
+    image, fmt, orientation, _ = imageio.load(path)
     fixed, description = imageio.fix_orientation(image, orientation)
 
     assert (fmt, orientation) == ("PNG", value)
@@ -44,7 +44,7 @@ def test_fix_makes_the_stored_image_upright(tmp_path, value):
 @pytest.mark.parametrize("value", sorted(STORE))
 def test_fix_matches_pillows_own_exif_transpose(tmp_path, value):
     path = save_tagged(tmp_path / "x.png", upright().transpose(STORE[value]), value)
-    image, _, orientation = imageio.load(path)
+    image, _, orientation, _ = imageio.load(path)
     fixed, _ = imageio.fix_orientation(image, orientation)
     with Image.open(path) as opened:
         expected = ImageOps.exif_transpose(opened)
@@ -89,5 +89,5 @@ def test_unknown_or_upright_values_change_nothing(value):
 def test_damaged_exif_does_not_make_the_image_unreadable(tmp_path):
     path = tmp_path / "x.jpg"
     Image.new("RGB", (8, 4)).save(path, exif=b"Exif\x00\x00not really exif data")
-    image, fmt, orientation = imageio.load(path)
+    image, fmt, orientation, _ = imageio.load(path)
     assert image.size == (8, 4) and fmt == "JPEG" and orientation is None

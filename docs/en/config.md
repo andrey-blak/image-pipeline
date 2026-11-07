@@ -4,7 +4,7 @@ A TOML file passed with `--config`. It is separate from `pyproject.toml`. Withou
 
 The file holds an ordered list of steps (`[[steps]]` tables). Each step has a `name` and its own options. Steps run in the order written; every step receives the result of the previous one. Unknown step names, unknown or missing options, and values of the wrong type are rejected before any image is processed.
 
-Besides the steps, the file may contain an `[options]` table with global settings. Only the `steps` and `options` keys are accepted at the top level.
+Besides the steps, the file may contain two tables of global settings: `[options]` and `[output]`. Only the `steps`, `options` and `output` keys are accepted at the top level.
 
 ## `[options]` table
 
@@ -24,6 +24,63 @@ fix_orientation = false
 | `fix_orientation` | bool | `true` | Make photos upright according to their EXIF orientation tag (phone photos are often stored sideways with a tag that tells viewers to rotate them). Done when an image is read, before any step; it is not a step. |
 
 With `fix_orientation` on, an image with an orientation tag is rotated or mirrored so it is upright, and all steps and the `size` in `--verbose` output refer to the upright image. The written file has no orientation tag, so it is not rotated twice. Images without a tag, or with the tag "upright" (value 1), are left alone, as are unknown or damaged tag values. With `fix_orientation = false` the image is processed as stored. A dry run (`--dry-run`) applies the fix too, because it can swap width and height.
+
+## `[output]` table
+
+How the results are written. It is not a pipeline step: it is applied to every image after the last step. Like `[options]`, the table may be written anywhere in the file.
+
+```toml
+[output]
+format = "webp"        # keep (default), png, jpg, webp, avif, gif, tiff, bmp
+quality = 85           # 1-100 (default 90), for jpg, webp and avif
+background = "white"   # default; used where transparency cannot be stored
+keep_metadata = false  # default
+```
+
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `format` | string | `"keep"` | `keep` writes every file in its original format. Otherwise all files are converted to this format. `jpeg` and `tif` are accepted as spellings of `jpg` and `tiff`. |
+| `quality` | int | `90` | 1-100. Used by `jpg`, `webp` and `avif`; with `format = "keep"` it applies to the files of those formats. Giving it for a format without a quality setting (`png`, `gif`, `tiff`, `bmp`) is an error. |
+| `background` | string | `"white"` | An opaque color (a name such as `white`, or hex such as `#ffffff`) that transparent areas are flattened onto when the output format cannot store transparency. `transparent` or a color with an alpha part is rejected. |
+| `keep_metadata` | bool | `false` | Carry the metadata of the original over to the result (see below). |
+
+### Formats
+
+| Format | Extension | Transparency | `quality` | Metadata that `keep_metadata` carries over |
+|---|---|---|---|---|
+| `png` | `.png` | yes | no | EXIF |
+| `jpg` | `.jpg` | no, flattened | yes | EXIF, XMP, comment |
+| `webp` | `.webp` | yes | yes | EXIF, XMP |
+| `avif` | `.avif` | yes | yes | EXIF, XMP |
+| `gif` | `.gif` | no, flattened | no | comment |
+| `tiff` | `.tiff` | yes | no | none |
+| `bmp` | `.bmp` | no, flattened | no | none |
+
+- **`keep`** keeps the spelling of the original extension (`.JPG`, `.jpeg`, `.tif`). A JPEG written from a camera's multi-picture file (MPO) is saved as JPEG. Files in other formats (TGA, ICO, ...) are saved in their own format with Pillow's defaults and without metadata; if that is not possible the file is skipped with a warning.
+- **Converting** changes the extension to the one in the table. Only the first frame of animated files is used.
+- **Transparency** that the output format cannot store (`jpg`, `gif`, `bmp`) is composited onto `background`; semi-transparent pixels blend with it. For `png`, `webp`, `avif` and `tiff` the alpha channel is kept. Choose the background to match the page the images will be shown on.
+- **Quality** 90 is used when `quality` is not given. This also applies to JPEG files in `keep` mode.
+
+### Metadata
+
+By default (`keep_metadata = false`) everything personal is dropped: EXIF (camera, date, GPS position, ...), XMP, comments and text chunks. The **ICC color profile is always kept** where the format can store it (`png`, `jpg`, `webp`, `avif`, `tiff`), because it is color data, not personal data, and removing it would make images with a wide-gamut profile look different.
+
+With `keep_metadata = true`, the EXIF, XMP and comment of the original are carried over to the formats that can hold them (see the table). Notes:
+- The EXIF orientation tag is removed when the pixels were rotated (`fix_orientation`), and kept when they were not (`fix_orientation = false`).
+- Tags that describe the original image, such as its width and height, are not updated after resizing or trimming.
+- DPI information is not carried over.
+
+### Name clashes
+
+When converting, two files can get the same name: `a.png` and `a.jpg` in one folder both become `a.webp`. The first file (in sorted order) keeps the name; the next ones get a number: `a-1.webp`, `a-2.webp`, and so on. Nothing is overwritten. The command line report always mentions it, with or without `--verbose`:
+
+```
+2 images processed, 0 skipped.
+1 file got a number added to its name because the name was already taken:
+  input/a.png -> output/a-1.webp
+```
+
+(With `--dry-run`: "would get".) With `format = "keep"` names never clash. Files left from earlier runs in the output folder are overwritten, as before.
 
 ## Steps
 
@@ -60,7 +117,7 @@ Scales an image keeping its proportions. Which options apply depends on `mode`:
 | `upscale` | bool | `false` | Also enlarge images that are smaller than the target. Without it: `longest_side` leaves a small image unchanged; `padding` keeps it at its size, centered on the canvas; `crop` leaves an image unchanged if it is smaller than the target in either direction, so output sizes can vary. |
 | `fill` | string | `"transparent"` | `padding` only. `transparent`, a color name such as `white`, or hex such as `#ffffff` (`#rrggbbaa` for a partly transparent fill). |
 
-Options that a mode does not use are rejected. Transparent areas are kept only in formats that support transparency (PNG, WebP). JPEG output currently turns transparent areas black, until the output section gets a background color option; use `fill = "white"` (or another color) when the results will be JPEG.
+Options that a mode does not use are rejected. Transparent areas are kept only in output formats that support transparency (PNG, WebP, AVIF, TIFF); for the others they are flattened onto the `background` color of the `[output]` table (white by default). Use `fill = "white"` (or another color) to have no transparency at all.
 
 ### `auto_brightness`
 Adjusts brightness automatically. It is best placed after `resize` (fewer pixels to analyze) and before `rnd_saturation`. Transparency is preserved, and fully transparent pixels are ignored when measuring brightness. Brightness here means the luminance of a pixel (its gray value).
@@ -93,7 +150,7 @@ uv run python -m imgpipe --config config.toml [--input input] [--output output] 
 ```
 
 - `--input` (default `input`): searched recursively for images.
-- `--output` (default `output`): receives the results with the same relative paths, names and formats as the originals. This is temporary behavior until the output/naming section exists. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
+- `--output` (default `output`): receives the results with the same relative paths (subfolders are mirrored). Names and formats come from the `[output]` table: by default they are the originals'; with a `format` the extension changes and name clashes get a number. Renaming files by a pattern (date and time with random digits) is not implemented yet. The output folder must differ from the input folder; if it lies inside the input folder it is not rescanned.
 - `--seed`: makes random values repeatable.
 - `-v`, `--verbose`: prints one line to stdout for each file as soon as it is saved, with paths as given on the command line (warnings stay on stderr, the summary comes last):
 
