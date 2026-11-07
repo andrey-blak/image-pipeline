@@ -6,17 +6,31 @@ Python package: `imgpipe`. Pipeline configuration is TOML. Dependency management
 
 **Status.** Available steps: `trim_borders`, `rotate`, `rnd_rotate`, `resize`, `auto_brightness`, `rnd_saturation`. Photos with an EXIF orientation tag are made upright first (`fix_orientation`, on by default). Output (`[output]` table): keep the original format or convert to png, jpg, webp, avif, gif, tiff or bmp, with quality, a background for flattened transparency, and metadata stripping (on by default). Result files can be renamed from a pattern (`[rename]` table): original name, date and time, counter, random digits and letters, UUID.
 
-## Quick start
+## Python package quick start
 
-```
+```bash
 uv sync
 uv run pytest
 uv run python -m imgpipe --config config.example.toml --input input --output output --seed 1
 ```
 
+## Standalone application
+
+A standalone executable is available for Linux and Windows in the project's releases.
+
+Run the application from a terminal:
+
+```bash
+./imgpipe --config config.toml --input input --output output --seed 1
+```
+
+The executable uses the same command line options as the Python package.
+
+Original images are never modified.
+
 ## Command line
 
-```
+```bash
 uv run python -m imgpipe [--config FILE] [--input DIR] [--output DIR] [--seed N] [--verbose] [--dry-run]
 ```
 
@@ -30,8 +44,34 @@ uv run python -m imgpipe [--config FILE] [--input DIR] [--output DIR] [--seed N]
 | `-n`, `--dry-run` | off | Show what would be done, in the same per-file format as `--verbose`, without writing any files. |
 | `-h`, `--help` | | Show help. |
 
-Exit code: `0` on success (files that cannot be processed are skipped with a warning), `2` on a config or folder error.
 
-A standalone executable (Linux, Windows; no installation) can be built or downloaded from a release: see `docs/en/building.md`.
+## Examples
+
+Process images using a configuration file:
+```bash
+./imgpipe --config config.toml
+```
+
+Specify custom input and output folders:
+```bash
+./imgpipe --config config.toml --input photos --output processed
+```
+
+Preview the planned changes without modifying or creating output files:
+```bash
+./imgpipe --config config.toml --dry-run
+```
+
+Process images with verbose output:
+```bash
+./imgpipe --config config.toml --verbose
+```
+
+Use a fixed seed to make random transformations repeatable:
+```bash
+./imgpipe --config config.toml --seed 42
+```
 
 See `docs/en/config.md` for all options and `AGENTS.md` for the layout and conventions.
+
+To build the project, see `docs/en/building.md`.
