@@ -207,10 +207,10 @@ def encoded(image, fmt, **options):
     return buffer.getvalue()
 
 
-def test_default_quality_is_90(tmp_path):
+def test_default_quality_is_80(tmp_path):
     source = photo((64, 64))
     written = write(source, tmp_path / "x.jpg", format="jpg").read_bytes()
-    assert written == encoded(source, "JPEG", quality=90)
+    assert written == encoded(source, "JPEG", quality=80)
 
 
 @pytest.mark.parametrize("fmt, pillow", [("jpg", "JPEG"), ("webp", "WEBP")])

@@ -8,8 +8,8 @@ fix_orientation = true
 # format - keep the original format by default; or png, jpg, webp, avif, gif, tiff, bmp
 format = "keep"
 
-# quality: 1-100, for jpg, webp and avif (default 90)
-quality = 90
+# quality: 1-100, for jpg, webp and avif (default 80)
+quality = 80
 
 # opaque color for transparency where the format has none (jpg, gif, bmp)
 background = "white"

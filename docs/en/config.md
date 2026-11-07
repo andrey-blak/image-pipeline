@@ -42,7 +42,7 @@ How the results are written. It is not a pipeline step: it is applied to every i
 ```toml
 [output]
 format = "webp"        # keep (default), png, jpg, webp, avif, gif, tiff, bmp
-quality = 85           # 1-100 (default 90), for jpg, webp and avif
+quality = 85           # 1-100 (default 80), for jpg, webp and avif
 background = "white"   # default; used where transparency cannot be stored
 keep_metadata = false  # default
 ```
@@ -50,7 +50,7 @@ keep_metadata = false  # default
 | Option | Type | Default | Meaning |
 |---|---|---|---|
 | `format` | string | `"keep"` | `keep` writes every file in its original format. Otherwise all files are converted to this format. `jpeg` and `tif` are accepted as spellings of `jpg` and `tiff`. |
-| `quality` | int | `90` | 1-100. Used by `jpg`, `webp` and `avif`; with `format = "keep"` it applies to the files of those formats. Giving it for a format without a quality setting (`png`, `gif`, `tiff`, `bmp`) is an error. |
+| `quality` | int | `80` | 1-100. Used by `jpg`, `webp` and `avif`; with `format = "keep"` it applies to the files of those formats. Giving it for a format without a quality setting (`png`, `gif`, `tiff`, `bmp`) is an error. |
 | `background` | string | `"white"` | An opaque color (a name such as `white`, or hex such as `#ffffff`) that transparent areas are flattened onto when the output format cannot store transparency. `transparent` or a color with an alpha part is rejected. |
 | `keep_metadata` | bool | `false` | Carry the metadata of the original over to the result (see below). |
 
@@ -69,7 +69,7 @@ keep_metadata = false  # default
 - **`keep`** keeps the spelling of the original extension (`.JPG`, `.jpeg`, `.tif`). A JPEG written from a camera's multi-picture file (MPO) is saved as JPEG. Files in other formats (TGA, ICO, ...) are saved in their own format with Pillow's defaults and without metadata; if that is not possible the file is skipped with a warning.
 - **Converting** changes the extension to the one in the table. Only the first frame of animated files is used.
 - **Transparency** that the output format cannot store (`jpg`, `gif`, `bmp`) is composited onto `background`; semi-transparent pixels blend with it. For `png`, `webp`, `avif` and `tiff` the alpha channel is kept. Choose the background to match the page the images will be shown on.
-- **Quality** 90 is used when `quality` is not given. This also applies to JPEG files in `keep` mode.
+- **Quality** 80 is used when `quality` is not given. This also applies to JPEG files in `keep` mode.
 
 ### Metadata
 

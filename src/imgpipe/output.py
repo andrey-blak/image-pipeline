@@ -12,7 +12,7 @@ from imgpipe.colors import parse_color
 from imgpipe.imageio import Metadata
 from imgpipe.steps import normalize_mode
 
-DEFAULT_QUALITY = 90
+DEFAULT_QUALITY = 80
 
 
 @dataclass(frozen=True)
