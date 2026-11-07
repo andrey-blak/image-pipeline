@@ -1,2 +1,2 @@
-class ConfigError(ValueError):
-    """Invalid pipeline configuration."""
+class PresetError(ValueError):
+    """Invalid preset."""

@@ -1,7 +1,7 @@
 """Pipeline steps and their registry.
 
-A step is a dataclass whose fields are its config options. Register it with
-``@register("name")``; the name is what the config file refers to.
+A step is a dataclass whose fields are its preset options. Register it with
+``@register("name")``; the name is what the preset file refers to.
 """
 
 import dataclasses
@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from PIL import Image
 
-from imgpipe.errors import ConfigError
+from imgpipe.errors import PresetError
 
 REGISTRY: dict[str, type["Step"]] = {}
 
@@ -65,7 +65,7 @@ class Step:
         hints = typing.get_type_hints(cls)
         unknown = sorted(set(options) - set(fields))
         if unknown:
-            raise ConfigError(
+            raise PresetError(
                 f"step '{cls.name}': unknown option(s) {', '.join(unknown)}; "
                 f"known options: {', '.join(fields) or 'none'}"
             )
@@ -76,15 +76,15 @@ class Step:
             )
             if key not in options:
                 if required:
-                    raise ConfigError(f"step '{cls.name}': missing required option '{key}'")
+                    raise PresetError(f"step '{cls.name}': missing required option '{key}'")
                 continue
             _check_type(cls.name, key, options[key], hints[key])
         try:
             return cls(**options)
-        except ConfigError:
+        except PresetError:
             raise
         except ValueError as e:
-            raise ConfigError(f"step '{cls.name}': {e}") from e
+            raise PresetError(f"step '{cls.name}': {e}") from e
 
     def apply(self, image: Image.Image, ctx: Context) -> Image.Image:
         raise NotImplementedError
@@ -101,7 +101,7 @@ def _check_type(step: str, key: str, value: typing.Any, expected: type) -> None:
     else:
         ok = isinstance(value, expected)
     if not ok:
-        raise ConfigError(
+        raise PresetError(
             f"step '{step}': option '{key}' must be {expected.__name__}, "
             f"got {type(value).__name__} ({value!r})"
         )
@@ -122,7 +122,7 @@ def create_step(name: str, options: dict[str, typing.Any]) -> Step:
     try:
         cls = REGISTRY[name]
     except KeyError:
-        raise ConfigError(
+        raise PresetError(
             f"unknown step '{name}'; known steps: {', '.join(sorted(REGISTRY))}"
         ) from None
     return cls.from_options(options)

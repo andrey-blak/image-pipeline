@@ -1,6 +1,6 @@
-# Pipeline config
+# Pipeline preset
 
-A TOML file passed with `--config`. It is separate from `pyproject.toml`. Without `--config` the tool does nothing.
+A TOML file passed with `--preset`. Without `--preset` the tool does nothing.
 
 The file holds an ordered list of steps (`[[steps]]` tables). Each step has a `name` and its own options. Steps run in the order written; every step receives the result of the previous one. Unknown step names, unknown or missing options, and values of the wrong type are rejected before any image is processed.
 
@@ -233,7 +233,7 @@ Changes saturation by a random percent in `[min_percent, max_percent]`, drawn se
 ## Command line
 
 ```
-uv run python -m imgpipe --config config.toml [--input input] [--output output] [--seed N] [--verbose] [--dry-run]
+uv run python -m imgpipe --preset preset.toml [--input input] [--output output] [--seed N] [--verbose] [--dry-run]
 ```
 
 - `--input` (default `input`): searched recursively for images.

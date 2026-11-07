@@ -7,8 +7,8 @@ import pytest
 from PIL import Image
 
 from imgpipe.cli import main
-from imgpipe.config import load_config
-from imgpipe.errors import ConfigError
+from imgpipe.preset import load_preset
+from imgpipe.errors import PresetError
 from imgpipe.naming import Literal, RenameSettings, Token, parse_pattern
 from imgpipe.output import OutputSettings
 from imgpipe.pipeline import Pipeline
@@ -178,38 +178,38 @@ def test_tokens_without_randomness_do_not_draw_numbers():
     assert rng.getstate() == state
 
 
-# ---------- config ----------
+# ---------- preset ----------
 
-def config(tmp_path, text):
-    path = tmp_path / "config.toml"
+def preset(tmp_path, text):
+    path = tmp_path / "preset.toml"
     path.write_text(text + '\n[[steps]]\nname = "resize"\nsize = 10\n')
     return path
 
 
 def test_rename_table_is_loaded(tmp_path):
-    rename = load_config(config(tmp_path, '[rename]\npattern = "N-CC"\ncounter_start = 5')).rename
+    rename = load_preset(preset(tmp_path, '[rename]\npattern = "N-CC"\ncounter_start = 5')).rename
     assert (rename.pattern, rename.counter_start) == ("N-CC", 5)
 
 
 def test_rename_defaults_and_absent_table(tmp_path):
-    assert load_config(config(tmp_path, '[rename]\npattern = "N"')).rename.counter_start == 1
-    assert load_config(config(tmp_path, "")).rename is None
+    assert load_preset(preset(tmp_path, '[rename]\npattern = "N"')).rename.counter_start == 1
+    assert load_preset(preset(tmp_path, "")).rename is None
 
 
 def test_rename_table_may_come_after_the_steps(tmp_path):
-    path = tmp_path / "config.toml"
+    path = tmp_path / "preset.toml"
     path.write_text('[[steps]]\nname = "resize"\nsize = 10\n\n[rename]\npattern = "N"\n')
-    assert load_config(path).rename.pattern == "N"
+    assert load_preset(path).rename.pattern == "N"
 
 
 def test_rename_needs_a_pattern(tmp_path):
-    with pytest.raises(ConfigError, match=r"\[rename\] needs a 'pattern'"):
-        load_config(config(tmp_path, "[rename]\ncounter_start = 2"))
+    with pytest.raises(PresetError, match=r"\[rename\] needs a 'pattern'"):
+        load_preset(preset(tmp_path, "[rename]\ncounter_start = 2"))
 
 
 def test_rename_unknown_option(tmp_path):
-    with pytest.raises(ConfigError, match=r"unknown option\(s\) suffix in \[rename\]; known options: pattern, counter_start"):
-        load_config(config(tmp_path, '[rename]\npattern = "N"\nsuffix = 1'))
+    with pytest.raises(PresetError, match=r"unknown option\(s\) suffix in \[rename\]; known options: pattern, counter_start"):
+        load_preset(preset(tmp_path, '[rename]\npattern = "N"\nsuffix = 1'))
 
 
 @pytest.mark.parametrize("body, message", [
@@ -218,39 +218,39 @@ def test_rename_unknown_option(tmp_path):
     ('pattern = "N"\ncounter_start = true', "option 'counter_start' must be int"),
 ])
 def test_rename_wrong_types(tmp_path, body, message):
-    with pytest.raises(ConfigError, match=message):
-        load_config(config(tmp_path, f"[rename]\n{body}"))
+    with pytest.raises(PresetError, match=message):
+        load_preset(preset(tmp_path, f"[rename]\n{body}"))
 
 
 def test_rename_value_errors_name_the_section(tmp_path):
-    with pytest.raises(ConfigError, match=r"\[rename\]: 'pattern': 'YYY' is not valid"):
-        load_config(config(tmp_path, '[rename]\npattern = "YYY"'))
-    with pytest.raises(ConfigError, match=r"\[rename\]: 'counter_start' must not be negative"):
-        load_config(config(tmp_path, '[rename]\npattern = "N"\ncounter_start = -1'))
+    with pytest.raises(PresetError, match=r"\[rename\]: 'pattern': 'YYY' is not valid"):
+        load_preset(preset(tmp_path, '[rename]\npattern = "YYY"'))
+    with pytest.raises(PresetError, match=r"\[rename\]: 'counter_start' must not be negative"):
+        load_preset(preset(tmp_path, '[rename]\npattern = "N"\ncounter_start = -1'))
 
 
 def test_bare_top_level_pattern_gets_a_hint(tmp_path):
-    path = tmp_path / "config.toml"
+    path = tmp_path / "preset.toml"
     path.write_text('pattern = "N"\n[[steps]]\nname = "resize"\nsize = 10\n')
-    with pytest.raises(ConfigError, match=r"option 'pattern' belongs in the \[rename\] table"):
-        load_config(path)
+    with pytest.raises(PresetError, match=r"option 'pattern' belongs in the \[rename\] table"):
+        load_preset(path)
 
 
 def test_rename_alone_needs_no_steps(tmp_path):
-    path = tmp_path / "config.toml"
+    path = tmp_path / "preset.toml"
     path.write_text('[rename]\npattern = "N"\n')
-    loaded = load_config(path)
+    loaded = load_preset(path)
     assert loaded.steps == [] and loaded.rename.pattern == "N"
     path.write_text('steps = []\n[rename]\npattern = "N"\n')
-    assert load_config(path).steps == []
+    assert load_preset(path).steps == []
 
 
 @pytest.mark.parametrize("text", ["", "steps = []\n", "[output]\nbackground = \"red\"\n"])
 def test_no_steps_and_no_rename_is_still_an_error(tmp_path, text):
-    path = tmp_path / "config.toml"
+    path = tmp_path / "preset.toml"
     path.write_text(text)
-    with pytest.raises(ConfigError, match="define at least one \\[\\[steps\\]\\] table"):
-        load_config(path)
+    with pytest.raises(PresetError, match="define at least one \\[\\[steps\\]\\] table"):
+        load_preset(path)
 
 
 # ---------- pipeline ----------
@@ -357,11 +357,11 @@ def test_dry_run_shows_the_real_names_and_writes_nothing(make_image, tmp_path):
 
 def test_cli_verbose_shows_the_new_names(make_image, tmp_path, capsys):
     make_image("in/a.png")
-    config_path = tmp_path / "config.toml"
-    config_path.write_text(
+    preset_path = tmp_path / "preset.toml"
+    preset_path.write_text(
         '[rename]\npattern = "\'photo-\'CCC"\n\n[[steps]]\nname = "resize"\nsize = 10\n'
     )
-    code = main(["--config", str(config_path), "--input", str(tmp_path / "in"),
+    code = main(["--preset", str(preset_path), "--input", str(tmp_path / "in"),
                  "--output", str(tmp_path / "out"), "-v"])
 
     assert code == 0
@@ -371,9 +371,9 @@ def test_cli_verbose_shows_the_new_names(make_image, tmp_path, capsys):
 
 def test_cli_reports_a_bad_pattern(make_image, tmp_path, capsys):
     make_image("in/a.png")
-    config_path = tmp_path / "config.toml"
-    config_path.write_text('[rename]\npattern = "YYY"\n\n[[steps]]\nname = "resize"\nsize = 10\n')
-    code = main(["--config", str(config_path), "--input", str(tmp_path / "in")])
+    preset_path = tmp_path / "preset.toml"
+    preset_path.write_text('[rename]\npattern = "YYY"\n\n[[steps]]\nname = "resize"\nsize = 10\n')
+    code = main(["--preset", str(preset_path), "--input", str(tmp_path / "in")])
 
     assert code == 2
     assert "[rename]: 'pattern': 'YYY' is not valid" in capsys.readouterr().err
@@ -381,9 +381,9 @@ def test_cli_reports_a_bad_pattern(make_image, tmp_path, capsys):
 
 def test_cli_renames_without_any_steps(make_image, tmp_path, capsys):
     make_image("in/a.png", size=(40, 20))
-    config_path = tmp_path / "config.toml"
-    config_path.write_text('[rename]\npattern = "\'p\'C"\n')
-    code = main(["--config", str(config_path), "--input", str(tmp_path / "in"),
+    preset_path = tmp_path / "preset.toml"
+    preset_path.write_text('[rename]\npattern = "\'p\'C"\n')
+    code = main(["--preset", str(preset_path), "--input", str(tmp_path / "in"),
                  "--output", str(tmp_path / "out")])
 
     assert code == 0

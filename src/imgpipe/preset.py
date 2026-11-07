@@ -2,7 +2,7 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from imgpipe.errors import ConfigError
+from imgpipe.errors import PresetError
 from imgpipe.naming import RenameSettings
 from imgpipe.output import OutputSettings
 from imgpipe.steps import Step, create_step
@@ -15,7 +15,7 @@ TABLES = {"options": OPTIONS, "output": OUTPUT, "rename": RENAME}
 
 
 @dataclass
-class Config:
+class Preset:
     steps: list[Step]
     fix_orientation: bool = True
     output: OutputSettings = field(default_factory=OutputSettings)
@@ -25,17 +25,17 @@ class Config:
 def _load_table(path: Path, section: str, table: object, spec: dict[str, type]) -> dict:
     """Check a table of global settings; returns the values that were given."""
     if not isinstance(table, dict):
-        raise ConfigError(f"{path}: [{section}] must be a table")
+        raise PresetError(f"{path}: [{section}] must be a table")
     unknown = sorted(set(table) - set(spec))
     if unknown:
-        raise ConfigError(
+        raise PresetError(
             f"{path}: unknown option(s) {', '.join(unknown)} in [{section}]; "
             f"known options: {', '.join(spec)}"
         )
     for name, value in table.items():
         expected = spec[name]
         if not isinstance(value, expected) or (expected is int and isinstance(value, bool)):
-            raise ConfigError(
+            raise PresetError(
                 f"{path}: option '{name}' must be {expected.__name__}, "
                 f"got {type(value).__name__} ({value!r})"
             )
@@ -59,50 +59,50 @@ def _changes_files(
     )
 
 
-def load_config(path: Path) -> Config:
-    """Read a TOML pipeline config: the steps in file order and the global tables."""
+def load_preset(path: Path) -> Preset:
+    """Read a TOML pipeline preset: the steps in file order and the global tables."""
     try:
         with open(path, "rb") as f:
             data = tomllib.load(f)
     except FileNotFoundError:
-        raise ConfigError(f"config file not found: {path}") from None
+        raise PresetError(f"preset file not found: {path}") from None
     except tomllib.TOMLDecodeError as e:
-        raise ConfigError(f"{path}: invalid TOML: {e}") from e
+        raise PresetError(f"{path}: invalid TOML: {e}") from e
 
     for section, spec in TABLES.items():
         for name in spec:
             if name in data:
-                raise ConfigError(f"{path}: option '{name}' belongs in the [{section}] table")
+                raise PresetError(f"{path}: option '{name}' belongs in the [{section}] table")
     unknown = sorted(set(data) - {"steps", *TABLES})
     if unknown:
-        raise ConfigError(f"{path}: unknown top-level key(s): {', '.join(unknown)}")
+        raise PresetError(f"{path}: unknown top-level key(s): {', '.join(unknown)}")
 
     options = _load_table(path, "options", data.get("options", {}), OPTIONS)
     output_values = _load_table(path, "output", data.get("output", {}), OUTPUT)
     try:
         output = OutputSettings(**output_values)
     except ValueError as e:
-        raise ConfigError(f"{path}: [output]: {e}") from e
+        raise PresetError(f"{path}: [output]: {e}") from e
     rename = None
     if "rename" in data:
         rename_values = _load_table(path, "rename", data["rename"], RENAME)
         if "pattern" not in rename_values:
-            raise ConfigError(f"{path}: [rename] needs a 'pattern'")
+            raise PresetError(f"{path}: [rename] needs a 'pattern'")
         try:
             rename = RenameSettings(**rename_values)
         except ValueError as e:
-            raise ConfigError(f"{path}: [rename]: {e}") from e
+            raise PresetError(f"{path}: [rename]: {e}") from e
 
     entries = data.get("steps")
     if entries in (None, []) and _changes_files(options, output_values, output, rename):
         entries = []  # renaming, converting etc. alone is a valid run
     elif not isinstance(entries, list) or not entries:
-        raise ConfigError(f"{path}: define at least one [[steps]] table")
+        raise PresetError(f"{path}: define at least one [[steps]] table")
 
     steps = []
     for index, entry in enumerate(entries, start=1):
         if not isinstance(entry, dict) or "name" not in entry:
-            raise ConfigError(f"{path}: [[steps]] #{index} needs a 'name'")
+            raise PresetError(f"{path}: [[steps]] #{index} needs a 'name'")
         step_options = {key: value for key, value in entry.items() if key != "name"}
         steps.append(create_step(entry["name"], step_options))
-    return Config(steps=steps, output=output, rename=rename, **options)
+    return Preset(steps=steps, output=output, rename=rename, **options)

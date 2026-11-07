@@ -3,7 +3,7 @@ import random
 import pytest
 from PIL import Image, ImageOps
 
-from imgpipe.errors import ConfigError
+from imgpipe.errors import PresetError
 from imgpipe.pipeline import Pipeline
 from imgpipe.steps import Context, create_step
 from imgpipe.steps.auto_brightness import AutoBrightness, _levels
@@ -250,7 +250,7 @@ def test_input_image_is_not_modified(ctx, options):
     ],
 )
 def test_invalid_options_rejected(options, message):
-    with pytest.raises(ConfigError, match=f"step 'auto_brightness'.*{message}"):
+    with pytest.raises(PresetError, match=f"step 'auto_brightness'.*{message}"):
         create_step("auto_brightness", options)
 
 

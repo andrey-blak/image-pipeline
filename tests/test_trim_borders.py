@@ -3,7 +3,7 @@ import random
 import pytest
 from PIL import Image
 
-from imgpipe.errors import ConfigError
+from imgpipe.errors import PresetError
 from imgpipe.pipeline import Pipeline
 from imgpipe.steps import Context, create_step
 from imgpipe.steps.trim_borders import TrimBorders
@@ -306,7 +306,7 @@ def test_one_pixel_and_tiny_images(ctx):
     ],
 )
 def test_invalid_options_rejected(options, message):
-    with pytest.raises(ConfigError, match=f"step 'trim_borders'.*{message}"):
+    with pytest.raises(PresetError, match=f"step 'trim_borders'.*{message}"):
         create_step("trim_borders", options)
 
 

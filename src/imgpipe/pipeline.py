@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 from imgpipe import imageio, output
-from imgpipe.errors import ConfigError
+from imgpipe.errors import PresetError
 from imgpipe.naming import RenameSettings
 from imgpipe.output import OutputSettings
 from imgpipe.steps import Context, Step
@@ -95,7 +95,7 @@ class Pipeline:
         """
         input_dir, output_dir = input_dir.resolve(), output_dir.resolve()
         if output_dir == input_dir:
-            raise ConfigError("output folder must differ from the input folder")
+            raise PresetError("output folder must differ from the input folder")
         ctx = Context(rng=rng)
         result = RunResult()
         used: set[Path] = set()

@@ -170,7 +170,7 @@ def test_saturation_grayscale_recorded_in_both_modes(ctx, skip):
 
 # ---------- pipeline dry run ----------
 
-CONFIGS = {
+PRESETS = {
     "resize+saturation": [("resize", {"size": 100}), ("rnd_saturation", {"min_percent": 3, "max_percent": 40})],
     "padding+saturation": [
         ("resize", {"mode": "padding", "width": 100, "height": 60, "fill": "white"}),
@@ -203,9 +203,9 @@ def tree(make_image, tmp_path):
     return tmp_path
 
 
-@pytest.mark.parametrize("name", CONFIGS)
+@pytest.mark.parametrize("name", PRESETS)
 def test_dry_run_reports_equal_real_run_reports(tree, name):
-    pipeline = build(CONFIGS[name])
+    pipeline = build(PRESETS[name])
     _, real = reports_of(pipeline, tree / "in", tree / "real", seed=3, dry_run=False)
     _, dry = reports_of(pipeline, tree / "in", tree / "dry", seed=3, dry_run=True)
     assert real and dry == real
@@ -213,7 +213,7 @@ def test_dry_run_reports_equal_real_run_reports(tree, name):
 
 def test_dry_run_writes_nothing(tree):
     before = sorted(p for p in tree.rglob("*"))
-    result, _ = reports_of(build(CONFIGS["resize+saturation"]), tree / "in", tree / "out", 1, dry_run=True)
+    result, _ = reports_of(build(PRESETS["resize+saturation"]), tree / "in", tree / "out", 1, dry_run=True)
 
     assert not (tree / "out").exists()
     assert sorted(tree.rglob("*")) == before
@@ -221,7 +221,7 @@ def test_dry_run_writes_nothing(tree):
 
 
 def test_dry_run_lists_would_be_targets(tree):
-    result, _ = reports_of(build(CONFIGS["crop"]), tree / "in", tree / "out", 1, dry_run=True)
+    result, _ = reports_of(build(PRESETS["crop"]), tree / "in", tree / "out", 1, dry_run=True)
     assert [p.relative_to((tree / "out").resolve()).as_posix() for p in result.processed] == [
         "a.png", "b.jpg", "gray.png", "sub/c.png", "sub/deep/d.png",
     ]
@@ -229,13 +229,13 @@ def test_dry_run_lists_would_be_targets(tree):
 
 def test_dry_run_leaves_originals_untouched(tree):
     originals = {p: p.read_bytes() for p in (tree / "in").rglob("*.png")}
-    reports_of(build(CONFIGS["resize+saturation"]), tree / "in", tree / "out", 1, dry_run=True)
+    reports_of(build(PRESETS["resize+saturation"]), tree / "in", tree / "out", 1, dry_run=True)
     assert {p: p.read_bytes() for p in originals} == originals
 
 
 def test_dry_run_still_finds_unreadable_files(tree):
     (tree / "in/broken.png").write_bytes(b"junk")
-    result, reports = reports_of(build(CONFIGS["crop"]), tree / "in", tree / "out", 1, dry_run=True)
+    result, reports = reports_of(build(PRESETS["crop"]), tree / "in", tree / "out", 1, dry_run=True)
     assert [Path(p).name for p, _ in result.skipped] == ["broken.png"]
     assert "broken.png" not in [r.source.name for r in reports]
 

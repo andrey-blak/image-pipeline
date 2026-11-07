@@ -4,7 +4,7 @@ import re
 import pytest
 from PIL import Image
 
-from imgpipe.errors import ConfigError
+from imgpipe.errors import PresetError
 from imgpipe.pipeline import Pipeline
 from imgpipe.steps import Context, create_step, REGISTRY
 from imgpipe.steps.rnd_rotate import RandomRotate
@@ -103,7 +103,7 @@ def test_input_is_not_modified(ctx):
     ],
 )
 def test_rotate_validation(options, message):
-    with pytest.raises(ConfigError, match=f"step 'rotate'.*{message}"):
+    with pytest.raises(PresetError, match=f"step 'rotate'.*{message}"):
         create_step("rotate", options)
 
 
@@ -195,7 +195,7 @@ def test_corner_options_work_as_in_rotate(ctx):
     ],
 )
 def test_rnd_rotate_validation(options, message):
-    with pytest.raises(ConfigError, match=f"step 'rnd_rotate'.*{message}"):
+    with pytest.raises(PresetError, match=f"step 'rnd_rotate'.*{message}"):
         create_step("rnd_rotate", options)
 
 

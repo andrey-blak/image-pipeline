@@ -8,7 +8,7 @@ from PIL import Image
 from imgpipe.cli import format_report, main
 from imgpipe.pipeline import FileReport
 
-CONFIG = """
+PRESET = """
 [[steps]]
 name = "resize"
 size = 10
@@ -23,14 +23,14 @@ max_percent = 40
 def setup(make_image, tmp_path):
     make_image("in/a.png", size=(40, 20), color=(150, 110, 90))
     make_image("in/sub/b.jpg", size=(20, 40), color=(150, 110, 90))
-    config = tmp_path / "config.toml"
-    config.write_text(CONFIG)
-    return config
+    preset = tmp_path / "preset.toml"
+    preset.write_text(PRESET)
+    return preset
 
 
 def test_end_to_end(make_image, tmp_path, capsys):
-    config = setup(make_image, tmp_path)
-    code = main(["--config", str(config), "--input", str(tmp_path / "in"),
+    preset = setup(make_image, tmp_path)
+    code = main(["--preset", str(preset), "--input", str(tmp_path / "in"),
                  "--output", str(tmp_path / "out"), "--seed", "1"])
 
     assert code == 0
@@ -41,15 +41,15 @@ def test_end_to_end(make_image, tmp_path, capsys):
 
 
 def test_same_seed_twice_gives_identical_output(make_image, tmp_path):
-    config = setup(make_image, tmp_path)
+    preset = setup(make_image, tmp_path)
     for out in ("o1", "o2"):
-        main(["--config", str(config), "--input", str(tmp_path / "in"),
+        main(["--preset", str(preset), "--input", str(tmp_path / "in"),
               "--output", str(tmp_path / out), "--seed", "9"])
     for rel in ("a.png", "sub/b.jpg"):
         assert (tmp_path / "o1" / rel).read_bytes() == (tmp_path / "o2" / rel).read_bytes()
 
 
-def test_no_config_does_nothing(make_image, tmp_path, capsys):
+def test_no_preset_does_nothing(make_image, tmp_path, capsys):
     make_image("in/a.png")
     code = main(["--input", str(tmp_path / "in"), "--output", str(tmp_path / "out")])
 
@@ -58,28 +58,28 @@ def test_no_config_does_nothing(make_image, tmp_path, capsys):
     assert not (tmp_path / "out").exists()
 
 
-def test_bad_config_reports_error(tmp_path, capsys):
-    config = tmp_path / "config.toml"
-    config.write_text('[[steps]]\nname = "nope"\n')
-    code = main(["--config", str(config), "--input", str(tmp_path)])
+def test_bad_preset_reports_error(tmp_path, capsys):
+    preset = tmp_path / "preset.toml"
+    preset.write_text('[[steps]]\nname = "nope"\n')
+    code = main(["--preset", str(preset), "--input", str(tmp_path)])
 
     assert code == 2
     assert "error: unknown step 'nope'" in capsys.readouterr().err
 
 
 def test_missing_input_folder(tmp_path, capsys):
-    config = tmp_path / "config.toml"
-    config.write_text(CONFIG)
-    code = main(["--config", str(config), "--input", str(tmp_path / "nope")])
+    preset = tmp_path / "preset.toml"
+    preset.write_text(PRESET)
+    code = main(["--preset", str(preset), "--input", str(tmp_path / "nope")])
 
     assert code == 2
     assert "input folder not found" in capsys.readouterr().err
 
 
 def test_bad_file_gives_warning_and_exit_zero(make_image, tmp_path, capsys):
-    config = setup(make_image, tmp_path)
+    preset = setup(make_image, tmp_path)
     (tmp_path / "in/broken.png").write_bytes(b"junk")
-    code = main(["--config", str(config), "--input", str(tmp_path / "in"),
+    code = main(["--preset", str(preset), "--input", str(tmp_path / "in"),
                  "--output", str(tmp_path / "out")])
 
     captured = capsys.readouterr()
@@ -89,7 +89,7 @@ def test_bad_file_gives_warning_and_exit_zero(make_image, tmp_path, capsys):
 
 
 def run_verbose(tmp_path, seed="1"):
-    return main(["--config", str(tmp_path / "config.toml"), "--input", str(tmp_path / "in"),
+    return main(["--preset", str(tmp_path / "preset.toml"), "--input", str(tmp_path / "in"),
                  "--output", str(tmp_path / "out"), "--seed", seed, "--verbose"])
 
 
@@ -110,8 +110,8 @@ def test_verbose_lists_each_file(make_image, tmp_path, capsys):
 
 
 def test_no_file_lines_without_verbose(make_image, tmp_path, capsys):
-    config = setup(make_image, tmp_path)
-    main(["--config", str(config), "--input", str(tmp_path / "in"), "--output", str(tmp_path / "out")])
+    preset = setup(make_image, tmp_path)
+    main(["--preset", str(preset), "--input", str(tmp_path / "in"), "--output", str(tmp_path / "out")])
     assert capsys.readouterr().out.splitlines() == ["2 images processed, 0 skipped."]
 
 
@@ -134,7 +134,7 @@ def test_verbose_warning_stays_on_stderr_and_summary_is_last(make_image, tmp_pat
     assert captured.out.splitlines()[-1] == "2 images processed, 1 skipped."
 
 
-def test_verbose_without_config_does_nothing(capsys):
+def test_verbose_without_preset_does_nothing(capsys):
     assert main(["--verbose"]) == 0
     assert "nothing to do" in capsys.readouterr().out.lower()
 
@@ -147,8 +147,8 @@ def test_format_report_uses_paths_as_given():
 
 
 def test_short_option_v_is_the_same_as_verbose(make_image, tmp_path, capsys):
-    config = setup(make_image, tmp_path)
-    args = ["--config", str(config), "--input", str(tmp_path / "in"),
+    preset = setup(make_image, tmp_path)
+    args = ["--preset", str(preset), "--input", str(tmp_path / "in"),
             "--output", str(tmp_path / "out"), "--seed", "2"]
     main(args + ["--verbose"])
     long_form = capsys.readouterr().out
@@ -158,7 +158,7 @@ def test_short_option_v_is_the_same_as_verbose(make_image, tmp_path, capsys):
 
 
 def run_cli(tmp_path, *extra, seed="1"):
-    return main(["--config", str(tmp_path / "config.toml"), "--input", str(tmp_path / "in"),
+    return main(["--preset", str(tmp_path / "preset.toml"), "--input", str(tmp_path / "in"),
                  "--output", str(tmp_path / "out"), "--seed", seed, *extra])
 
 
@@ -200,21 +200,21 @@ def test_dry_run_reports_bad_file_as_warning(make_image, tmp_path, capsys):
     assert captured.out.splitlines()[-2:] == ["2 images would be processed, 1 skipped.", "Nothing was written."]
 
 
-def test_dry_run_still_rejects_a_bad_config(tmp_path, capsys):
-    (tmp_path / "config.toml").write_text('[[steps]]\nname = "nope"\n')
+def test_dry_run_still_rejects_a_bad_preset(tmp_path, capsys):
+    (tmp_path / "preset.toml").write_text('[[steps]]\nname = "nope"\n')
     (tmp_path / "in").mkdir()
     assert run_cli(tmp_path, "-n") == 2
     assert "error: unknown step 'nope'" in capsys.readouterr().err
 
 
-def test_dry_run_without_config_does_nothing(capsys):
+def test_dry_run_without_preset_does_nothing(capsys):
     assert main(["-n"]) == 0
     assert "nothing to do" in capsys.readouterr().out.lower()
 
 
 def test_singular_image_in_summary(make_image, tmp_path, capsys):
-    config = tmp_path / "config.toml"
-    config.write_text(CONFIG)
+    preset = tmp_path / "preset.toml"
+    preset.write_text(PRESET)
     make_image("in/a.png")
     run_cli(tmp_path)
     assert capsys.readouterr().out.splitlines()[-1] == "1 image processed, 0 skipped."
@@ -223,14 +223,14 @@ def test_singular_image_in_summary(make_image, tmp_path, capsys):
 
 
 def test_no_images_found_summary(tmp_path, capsys):
-    (tmp_path / "config.toml").write_text(CONFIG)
+    (tmp_path / "preset.toml").write_text(PRESET)
     (tmp_path / "in").mkdir()
     run_cli(tmp_path)
     assert capsys.readouterr().out.splitlines() == ["0 images processed, 0 skipped."]
 
 
-def test_dry_run_header_not_printed_for_config_errors(tmp_path, capsys):
-    (tmp_path / "config.toml").write_text('[[steps]]\nname = "nope"\n')
+def test_dry_run_header_not_printed_for_preset_errors(tmp_path, capsys):
+    (tmp_path / "preset.toml").write_text('[[steps]]\nname = "nope"\n')
     (tmp_path / "in").mkdir()
     run_cli(tmp_path, "-n")
     assert "Dry run" not in capsys.readouterr().out
@@ -245,14 +245,14 @@ def test_real_run_has_no_dry_run_header_or_footer(make_image, tmp_path, capsys):
 
 # ---------- EXIF orientation ----------
 
-def write_config(tmp_path, after=""):
-    """Write the standard config, followed by extra TOML (e.g. an [options] table)."""
-    (tmp_path / "config.toml").write_text(CONFIG + after)
+def write_preset(tmp_path, after=""):
+    """Write the standard preset, followed by extra TOML (e.g. an [options] table)."""
+    (tmp_path / "preset.toml").write_text(PRESET + after)
 
 
 def test_verbose_line_shows_the_applied_orientation(make_tagged_image, tmp_path, capsys):
     make_tagged_image("in/phone.jpg", 6, size=(40, 20))
-    write_config(tmp_path)
+    write_preset(tmp_path)
     assert run_cli(tmp_path, "-v") == 0
 
     line = capsys.readouterr().out.splitlines()[0]
@@ -261,7 +261,7 @@ def test_verbose_line_shows_the_applied_orientation(make_tagged_image, tmp_path,
 
 def test_dry_run_prints_the_same_orientation_line(make_tagged_image, tmp_path, capsys):
     make_tagged_image("in/phone.jpg", 6, size=(40, 20))
-    write_config(tmp_path)
+    write_preset(tmp_path)
     run_cli(tmp_path, "-n", seed="3")
     dry = capsys.readouterr().out.splitlines()[1]
     run_cli(tmp_path, "-v", seed="3")
@@ -269,9 +269,9 @@ def test_dry_run_prints_the_same_orientation_line(make_tagged_image, tmp_path, c
     assert dry == real and "orientation EXIF (rotated 90° cw)" in dry
 
 
-def test_fix_orientation_false_in_the_config(make_tagged_image, tmp_path, capsys):
+def test_fix_orientation_false_in_the_preset(make_tagged_image, tmp_path, capsys):
     make_tagged_image("in/phone.jpg", 6, size=(40, 20))
-    write_config(tmp_path, "\n[options]\nfix_orientation = false\n")
+    write_preset(tmp_path, "\n[options]\nfix_orientation = false\n")
     run_cli(tmp_path, "-v")
 
     line = capsys.readouterr().out.splitlines()[0]
@@ -280,15 +280,15 @@ def test_fix_orientation_false_in_the_config(make_tagged_image, tmp_path, capsys
         assert out.size == (10, 5)
 
 
-def test_non_bool_fix_orientation_is_a_config_error(tmp_path, capsys):
-    write_config(tmp_path, '\n[options]\nfix_orientation = "no"\n')
+def test_non_bool_fix_orientation_is_a_preset_error(tmp_path, capsys):
+    write_preset(tmp_path, '\n[options]\nfix_orientation = "no"\n')
     (tmp_path / "in").mkdir()
     assert run_cli(tmp_path) == 2
     assert "option 'fix_orientation' must be bool" in capsys.readouterr().err
 
 
 def test_old_top_level_fix_orientation_is_rejected_with_a_hint(tmp_path, capsys):
-    (tmp_path / "config.toml").write_text("fix_orientation = false\n" + CONFIG)
+    (tmp_path / "preset.toml").write_text("fix_orientation = false\n" + PRESET)
     (tmp_path / "in").mkdir()
     assert run_cli(tmp_path) == 2
     assert "option 'fix_orientation' belongs in the [options] table" in capsys.readouterr().err
@@ -296,7 +296,7 @@ def test_old_top_level_fix_orientation_is_rejected_with_a_hint(tmp_path, capsys)
 
 # ---------- trim_borders ----------
 
-TRIM_CONFIG = """
+TRIM_PRESET = """
 [[steps]]
 name = "trim_borders"
 
@@ -311,7 +311,7 @@ def test_verbose_and_dry_run_show_the_trim_entry(tmp_path, capsys):
     image = Image.new("RGB", (100, 60), (255, 255, 255))
     image.paste((200, 30, 30), (12, 8, 72, 28))
     image.save(tmp_path / "in/framed.png")
-    (tmp_path / "config.toml").write_text(TRIM_CONFIG)
+    (tmp_path / "preset.toml").write_text(TRIM_PRESET)
 
     run_cli(tmp_path, "-v")
     real = capsys.readouterr().out.splitlines()[0]
@@ -329,7 +329,7 @@ def test_verbose_and_dry_run_show_the_brightness_entry(tmp_path, capsys):
     image = Image.new("L", (40, 30), 80)
     image.paste(140, (20, 0, 40, 30))
     image.save(tmp_path / "in/dark.png")
-    (tmp_path / "config.toml").write_text(
+    (tmp_path / "preset.toml").write_text(
         '[[steps]]\nname = "auto_brightness"\ncutoff = 0\n\n[[steps]]\nname = "resize"\nsize = 20\n'
     )
 
@@ -344,14 +344,14 @@ def test_verbose_and_dry_run_show_the_brightness_entry(tmp_path, capsys):
 
 # ---------- [output] ----------
 
-def write_output_config(tmp_path, table=""):
-    (tmp_path / "config.toml").write_text(CONFIG + table)
+def write_output_preset(tmp_path, table=""):
+    (tmp_path / "preset.toml").write_text(PRESET + table)
 
 
 def test_conversion_end_to_end(make_image, tmp_path, capsys):
     make_image("in/a.png", size=(40, 20))
     make_image("in/sub/b.jpg", size=(20, 40))
-    write_output_config(tmp_path, '\n[output]\nformat = "webp"\nquality = 70\n')
+    write_output_preset(tmp_path, '\n[output]\nformat = "webp"\nquality = 70\n')
     assert run_cli(tmp_path, "-v") == 0
 
     lines = capsys.readouterr().out.splitlines()
@@ -365,7 +365,7 @@ def test_conversion_end_to_end(make_image, tmp_path, capsys):
 def test_name_clash_is_reported_without_verbose(make_image, tmp_path, capsys):
     make_image("in/a.png")
     make_image("in/a.jpg")
-    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    write_output_preset(tmp_path, '\n[output]\nformat = "webp"\n')
     assert run_cli(tmp_path) == 0
 
     lines = capsys.readouterr().out.splitlines()
@@ -379,7 +379,7 @@ def test_name_clash_is_reported_without_verbose(make_image, tmp_path, capsys):
 def test_several_clashes_use_the_plural(make_image, tmp_path, capsys):
     for name in ("a.png", "a.jpg", "a.gif"):
         make_image(f"in/{name}")
-    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    write_output_preset(tmp_path, '\n[output]\nformat = "webp"\n')
     run_cli(tmp_path)
     lines = capsys.readouterr().out.splitlines()
     assert lines[1] == "2 files got a number added to their names because the name was already taken:"
@@ -389,7 +389,7 @@ def test_several_clashes_use_the_plural(make_image, tmp_path, capsys):
 def test_dry_run_reports_clashes_too(make_image, tmp_path, capsys):
     make_image("in/a.png")
     make_image("in/a.jpg")
-    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    write_output_preset(tmp_path, '\n[output]\nformat = "webp"\n')
     run_cli(tmp_path, "-n")
 
     lines = capsys.readouterr().out.splitlines()
@@ -405,7 +405,7 @@ def test_dry_run_reports_clashes_too(make_image, tmp_path, capsys):
 def test_verbose_line_shows_the_final_name(make_image, tmp_path, capsys):
     make_image("in/a.png")
     make_image("in/a.jpg")
-    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    write_output_preset(tmp_path, '\n[output]\nformat = "webp"\n')
     run_cli(tmp_path, "-v")
     out = capsys.readouterr().out
     assert f"{tmp_path / 'in/a.png'} -> {tmp_path / 'out/a-1.webp'}" in out.splitlines()[1]
@@ -414,7 +414,7 @@ def test_verbose_line_shows_the_final_name(make_image, tmp_path, capsys):
 def test_no_clash_block_when_nothing_was_renamed(make_image, tmp_path, capsys):
     make_image("in/a.png")
     make_image("in/b.jpg")
-    write_output_config(tmp_path, '\n[output]\nformat = "webp"\n')
+    write_output_preset(tmp_path, '\n[output]\nformat = "webp"\n')
     run_cli(tmp_path)
     assert capsys.readouterr().out.splitlines() == ["2 images processed, 0 skipped."]
 
@@ -422,7 +422,7 @@ def test_no_clash_block_when_nothing_was_renamed(make_image, tmp_path, capsys):
 def test_keep_mode_has_no_clashes_and_keeps_names(make_image, tmp_path, capsys):
     make_image("in/a.png")
     make_image("in/a.jpg")
-    write_output_config(tmp_path)
+    write_output_preset(tmp_path)
     run_cli(tmp_path)
     assert capsys.readouterr().out.splitlines() == ["2 images processed, 0 skipped."]
     assert sorted(p.name for p in (tmp_path / "out").iterdir()) == ["a.jpg", "a.png"]
@@ -430,7 +430,7 @@ def test_keep_mode_has_no_clashes_and_keeps_names(make_image, tmp_path, capsys):
 
 def test_invalid_output_table_exits_with_an_error(tmp_path, capsys):
     (tmp_path / "in").mkdir()
-    write_output_config(tmp_path, '\n[output]\nformat = "heic"\n')
+    write_output_preset(tmp_path, '\n[output]\nformat = "heic"\n')
     assert run_cli(tmp_path) == 2
     assert "[output]: unknown format 'heic'" in capsys.readouterr().err
 
@@ -439,7 +439,7 @@ def test_invalid_output_table_exits_with_an_error(tmp_path, capsys):
 
 def test_verbose_and_dry_run_show_the_rotation_entry(make_image, tmp_path, capsys):
     make_image("in/a.png", size=(100, 60))
-    (tmp_path / "config.toml").write_text(
+    (tmp_path / "preset.toml").write_text(
         '[[steps]]\nname = "rnd_rotate"\n\n[[steps]]\nname = "resize"\nsize = 30\n'
     )
     run_cli(tmp_path, "-v", seed="3")
@@ -451,11 +451,11 @@ def test_verbose_and_dry_run_show_the_rotation_entry(make_image, tmp_path, capsy
     assert dry == real
 
 
-def run_without_steps(make_image, tmp_path, config_text, capsys, name="in/a.jpg"):
+def run_without_steps(make_image, tmp_path, preset_text, capsys, name="in/a.jpg"):
     make_image(name, size=(40, 20))
-    config = tmp_path / "config.toml"
-    config.write_text(config_text)
-    code = main(["--config", str(config), "--input", str(tmp_path / "in"),
+    preset = tmp_path / "preset.toml"
+    preset.write_text(preset_text)
+    code = main(["--preset", str(preset), "--input", str(tmp_path / "in"),
                  "--output", str(tmp_path / "out")])
     return code, capsys.readouterr()
 
@@ -469,9 +469,9 @@ def test_format_alone_converts_without_steps(make_image, tmp_path, capsys):
 
 def test_keep_metadata_false_alone_strips_the_metadata(make_tagged_image, tmp_path, capsys):
     make_tagged_image("in/a.jpg", 1)
-    config = tmp_path / "config.toml"
-    config.write_text("[output]\nkeep_metadata = false\n")
-    code = main(["--config", str(config), "--input", str(tmp_path / "in"),
+    preset = tmp_path / "preset.toml"
+    preset.write_text("[output]\nkeep_metadata = false\n")
+    code = main(["--preset", str(preset), "--input", str(tmp_path / "in"),
                  "--output", str(tmp_path / "out")])
     assert code == 0
     with Image.open(tmp_path / "out/a.jpg") as image:

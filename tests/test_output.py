@@ -6,8 +6,8 @@ import pytest
 from PIL import Image, ImageCms, PngImagePlugin
 
 from imgpipe import imageio, output
-from imgpipe.config import load_config
-from imgpipe.errors import ConfigError
+from imgpipe.preset import load_preset
+from imgpipe.errors import PresetError
 from imgpipe.output import FORMATS, OutputSettings
 from imgpipe.pipeline import Pipeline
 from imgpipe.steps import create_step

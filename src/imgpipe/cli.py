@@ -3,14 +3,14 @@ import random
 import sys
 from pathlib import Path
 
-from imgpipe.config import load_config
-from imgpipe.errors import ConfigError
+from imgpipe.preset import load_preset
+from imgpipe.errors import PresetError
 from imgpipe.pipeline import FileReport, Pipeline
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="imgpipe", description="Batch image transformation pipeline.")
-    parser.add_argument("--config", type=Path, help="TOML pipeline config; without it nothing is done")
+    parser.add_argument("--preset", type=Path, help="TOML pipeline preset; without it nothing is done")
     parser.add_argument("--input", type=Path, default=Path("input"), help="input folder (default: input)")
     parser.add_argument("--output", type=Path, default=Path("output"), help="output folder (default: output)")
     parser.add_argument("--seed", type=int, help="seed for repeatable random values")
@@ -31,13 +31,13 @@ def format_report(report: FileReport, input_dir: Path, output_dir: Path) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.config is None:
-        print("No config given; nothing to do.")
+    if args.preset is None:
+        print("No preset given; nothing to do.")
         return 0
     try:
-        config = load_config(args.config)
+        preset = load_preset(args.preset)
         if not args.input.is_dir():
-            raise ConfigError(f"input folder not found: {args.input}")
+            raise PresetError(f"input folder not found: {args.input}")
         on_file = None
         if args.verbose or args.dry_run:
             def on_file(report: FileReport) -> None:
@@ -45,11 +45,11 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.dry_run:
             print("Dry run (no changes will be made):", flush=True)
-        pipeline = Pipeline(config.steps, config.fix_orientation, config.output, config.rename)
+        pipeline = Pipeline(preset.steps, preset.fix_orientation, preset.output, preset.rename)
         result = pipeline.run(
             args.input, args.output, random.Random(args.seed), on_file, dry_run=args.dry_run
         )
-    except ConfigError as e:
+    except PresetError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
     for path, reason in result.skipped:

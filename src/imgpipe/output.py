@@ -17,7 +17,7 @@ DEFAULT_QUALITY = 80
 
 @dataclass(frozen=True)
 class OutputFormat:
-    name: str  # as written in the config
+    name: str  # as written in the preset
     pillow: str  # Pillow's format name
     extension: str  # used when converting to this format
     alpha: bool = True  # can store transparency (otherwise it is flattened onto the background)

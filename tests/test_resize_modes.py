@@ -1,7 +1,7 @@
 import pytest
 from PIL import Image
 
-from imgpipe.errors import ConfigError
+from imgpipe.errors import PresetError
 from imgpipe.steps import create_step
 from imgpipe.steps.resize import Resize
 
@@ -192,7 +192,7 @@ def test_crop_keeps_transparency(ctx):
     ],
 )
 def test_invalid_options_rejected(options, message):
-    with pytest.raises(ConfigError, match=f"step 'resize'.*{message}"):
+    with pytest.raises(PresetError, match=f"step 'resize'.*{message}"):
         create_step("resize", options)
 
 
@@ -202,5 +202,5 @@ def test_square_shorthand_sets_width_and_height():
 
 
 def test_longest_side_without_size_reports_missing_option():
-    with pytest.raises(ConfigError, match="missing required option 'size'"):
+    with pytest.raises(PresetError, match="missing required option 'size'"):
         create_step("resize", {})

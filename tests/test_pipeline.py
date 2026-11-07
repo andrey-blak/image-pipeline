@@ -4,7 +4,7 @@ import pytest
 from PIL import Image
 
 from imgpipe import imageio, output
-from imgpipe.errors import ConfigError
+from imgpipe.errors import PresetError
 from imgpipe.pipeline import Pipeline
 from imgpipe.steps import Context, create_step
 
@@ -84,7 +84,7 @@ def test_output_inside_input_is_not_rescanned(make_image, tmp_path):
 
 def test_output_equal_to_input_rejected(make_image, tmp_path):
     make_image("in/a.png")
-    with pytest.raises(ConfigError, match="must differ"):
+    with pytest.raises(PresetError, match="must differ"):
         pipeline(RESIZE).run(tmp_path / "in", tmp_path / "in", random.Random(1))
 
 
